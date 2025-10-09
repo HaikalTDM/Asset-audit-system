@@ -1,0 +1,48 @@
+import React, { useState } from 'react';
+import { Alert, StyleSheet, View } from 'react-native';
+import { Button } from '@/components/ui/Button';
+import { ThemedText } from '@/components/themed-text';
+import { exportZip, importZip } from '@/lib/exportImport';
+
+export default function Settings() {
+  const [busy, setBusy] = useState<'export' | 'import' | null>(null);
+
+  const onExport = async () => {
+    try {
+      setBusy('export');
+      const path = await exportZip();
+      Alert.alert('Export complete', `Saved: ${path.split('/').pop()}`);
+    } catch (e: any) {
+      Alert.alert('Export failed', String(e?.message || e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const onImport = async () => {
+    try {
+      setBusy('import');
+      const ok = await importZip();
+      if (ok) Alert.alert('Import complete', 'Your data has been imported.');
+    } catch (e: any) {
+      Alert.alert('Import failed', String(e?.message || e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <ThemedText type="title" style={{ marginBottom: 12 }}>Settings</ThemedText>
+      <ThemedText style={{ marginBottom: 4 }}>Data</ThemedText>
+      <Button title={busy === 'export' ? 'Exporting…' : 'Export (ZIP + CSV)'} onPress={onExport} disabled={!!busy} />
+      <View style={{ height: 8 }} />
+      <Button title={busy === 'import' ? 'Importing…' : 'Import from ZIP'} onPress={onImport} disabled={!!busy} variant="secondary" />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, padding: 16 },
+});
+
