@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Image, ScrollView, StyleSheet, View, Pressable, Platform } from 'react-native';
+import { Image, ScrollView, StyleSheet, View, Pressable, Platform, Alert, ActivityIndicator } from 'react-native';
 import * as Linking from 'expo-linking';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/Button';
@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { ZoomImageModal } from '@/components/ui/ZoomImageModal';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
+import { generateSingleAssessmentPDF, sharePDF } from '@/lib/pdf/pdfGenerator';
 
 function grade(total: number) {
   if (total <= 5) return { grade: 'A', label: 'Very Good' };
@@ -22,6 +23,7 @@ export default function AssessmentDetailsScreen() {
   const [item, setItem] = useState<Assessment | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [generatingPDF, setGeneratingPDF] = useState(false);
   const scheme = useColorScheme() ?? 'light';
   const { user } = useAuth();
 
@@ -37,6 +39,25 @@ export default function AssessmentDetailsScreen() {
       }
     })();
   }, [id, user]);
+
+  const handleGeneratePDF = async () => {
+    if (!item || !id) return;
+    
+    setGeneratingPDF(true);
+    try {
+      const pdfUri = await generateSingleAssessmentPDF(id, {
+        includePhotos: true,
+        includeMap: true,
+      });
+      
+      await sharePDF(pdfUri, `assessment-${id}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      Alert.alert('Error', 'Failed to generate PDF report. Please try again.');
+    } finally {
+      setGeneratingPDF(false);
+    }
+  };
 
   if (!item) {
     return (
@@ -97,6 +118,14 @@ export default function AssessmentDetailsScreen() {
             <Button title="Open on map" onPress={() => openOnMap(item.latitude!, item.longitude!, item.id!)} />
           </>
         ) : null}
+        
+        <View style={{ height: 8 }} />
+        <Button 
+          title={generatingPDF ? "Generating PDF..." : "Export as PDF"} 
+          onPress={handleGeneratePDF} 
+          variant="primary"
+          disabled={generatingPDF}
+        />
 
         {!imageError && (
           <ZoomImageModal uri={item.photo_uri} visible={viewerOpen} onClose={() => setViewerOpen(false)} />

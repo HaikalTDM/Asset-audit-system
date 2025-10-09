@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { generateBatchAssessmentPDF, sharePDF } from '@/lib/pdf/pdfGenerator';
 
 /**
  * History Tab Page
@@ -20,6 +21,7 @@ export default function HistoryTab() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
+  const [generatingPDF, setGeneratingPDF] = React.useState(false);
   const { user } = useAuth();
 
   const load = React.useCallback(async () => {
@@ -78,6 +80,33 @@ export default function HistoryTab() {
     }, [load])
   );
 
+  const handleExportAll = React.useCallback(async () => {
+    if (rows.length === 0) {
+      Alert.alert('No Data', 'No assessments to export.');
+      return;
+    }
+
+    const assessmentIds = rows.map(r => r.id).filter((id): id is string => id !== undefined);
+    if (assessmentIds.length === 0) {
+      Alert.alert('Error', 'No valid assessments found.');
+      return;
+    }
+
+    setGeneratingPDF(true);
+    try {
+      const pdfUri = await generateBatchAssessmentPDF(assessmentIds, {
+        includePhotos: false, // Don't include photos in batch to keep file size reasonable
+      });
+      
+      await sharePDF(pdfUri, `assessments-batch-${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error generating batch PDF:', error);
+      Alert.alert('Error', 'Failed to generate PDF report. Please try again.');
+    } finally {
+      setGeneratingPDF(false);
+    }
+  }, [rows]);
+
   return (
     <View style={[styles.container, { backgroundColor: Colors[scheme].background }]}>
       {loading ? (
@@ -107,6 +136,21 @@ export default function HistoryTab() {
           keyExtractor={(it) => String(it.id)}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           contentContainerStyle={styles.listContent}
+          ListHeaderComponent={
+            <View style={styles.listHeader}>
+              <ThemedText style={styles.headerText}>
+                {rows.length} Assessment{rows.length !== 1 ? 's' : ''}
+              </ThemedText>
+              <Button
+                title={generatingPDF ? "Generating..." : "Export All as PDF"}
+                onPress={handleExportAll}
+                variant="secondary"
+                size="sm"
+                disabled={generatingPDF}
+                style={styles.exportButton}
+              />
+            </View>
+          }
           renderItem={({ item }) => (
             <View style={[styles.row, { backgroundColor: Colors[scheme].card }]}>
               <Pressable
@@ -164,6 +208,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+  },
+  listHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  headerText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  exportButton: {
+    minWidth: 140,
   },
   errorText: {
     color: 'red',

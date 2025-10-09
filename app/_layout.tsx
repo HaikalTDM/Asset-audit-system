@@ -4,6 +4,7 @@ import React from 'react';
 import { AuthProvider } from '@/lib/auth/AuthContext';
 import { ThemeProvider } from '@/lib/theme-context';
 import { RouteProtection } from '@/lib/auth/RouteProtection';
+import { OfflineProvider } from '@/lib/offline/OfflineContext';
 
 function AuthGate() {
   return (
@@ -17,7 +18,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <AuthGate />
+        <OfflineProvider>
+          <AuthGate />
+        </OfflineProvider>
       </AuthProvider>
     </ThemeProvider>
   );

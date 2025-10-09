@@ -3,6 +3,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { StaffOrAdmin } from '@/lib/auth/RoleGuard';
+import { SyncStatusIndicator } from '@/components/ui/SyncStatusIndicator';
 
 export default function TabsLayout() {
   const scheme = useColorScheme() ?? 'light';
@@ -15,6 +16,7 @@ export default function TabsLayout() {
           headerTitleStyle: { fontWeight: '700', color: Colors[scheme].text },
           headerTintColor: Colors[scheme].tint,
           headerStyle: { backgroundColor: Colors[scheme].background },
+          headerRight: () => <SyncStatusIndicator compact showLabel={false} />,
           tabBarStyle: { 
             backgroundColor: Colors[scheme].background,
             borderTopColor: Colors[scheme].border,

@@ -3,11 +3,12 @@ import React, { useState } from 'react';
 import { Image, StyleSheet, View, Alert } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { ThemedText } from '@/components/themed-text';
-// Removed old SQLite import - now using FirestoreService
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { FirestoreService } from '@/lib/firestore';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { useOffline } from '@/lib/offline/OfflineContext';
+import { saveOfflineAssessment } from '@/lib/offline/offlineStorage';
 
 function bucket(total: number) {
   if (total <= 5) return { grade: 'A', label: 'Very Good' };
@@ -26,6 +27,7 @@ export default function Review() {
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const { user } = useAuth();
+  const { isOnline, refreshPendingCount } = useOffline();
 
   const condition = Number(params.condition ?? 0);
   const priority  = Number(params.priority ?? 0);
@@ -36,7 +38,6 @@ export default function Review() {
     if (!params.photoUri || !user) return;
 
     setSaving(true);
-    setUploadingImage(true);
 
     try {
       // Validate that we have an image URI
@@ -45,8 +46,7 @@ export default function Review() {
         return;
       }
 
-      // Use the new method that uploads image to Firebase Storage
-      await FirestoreService.createAssessmentWithImageUpload({
+      const assessmentData = {
         userId: user.uid,
         created_at: Date.now(),
         latitude: params.lat ? Number(params.lat) : null,
@@ -55,12 +55,37 @@ export default function Review() {
         element: params.element as string,
         condition,
         priority,
-        photo_uri: params.photoUri, // This will be replaced with Firebase Storage URL
+        photo_uri: params.photoUri,
         notes: params.notes || '',
-      });
+      };
 
-      // Navigate to History tab to show the newly created assessment
-      router.replace('/(app)/(tabs)/history');
+      // Check if online
+      if (isOnline) {
+        // Online: Upload to Firebase
+        setUploadingImage(true);
+        await FirestoreService.createAssessmentWithImageUpload(assessmentData);
+        
+        Alert.alert(
+          'Success',
+          'Assessment saved successfully!',
+          [{ text: 'OK', onPress: () => router.replace('/(app)/(tabs)/history') }]
+        );
+      } else {
+        // Offline: Save to local database
+        const photoId = `photo_${Date.now()}`;
+        await saveOfflineAssessment(assessmentData, [
+          { id: photoId, uri: params.photoUri }
+        ]);
+        
+        // Refresh pending count
+        await refreshPendingCount();
+
+        Alert.alert(
+          'Saved Offline',
+          'No internet connection. Assessment saved offline and will sync automatically when connection is restored.',
+          [{ text: 'OK', onPress: () => router.replace('/(app)/(tabs)/history') }]
+        );
+      }
     } catch (error) {
       console.error('Error saving assessment:', error);
 
@@ -71,13 +96,36 @@ export default function Review() {
         if (error.message.includes('Failed to upload image')) {
           errorMessage = 'Failed to upload the image. Please check your internet connection and try again.';
         } else if (error.message.includes('network')) {
-          errorMessage = 'Network error. Please check your internet connection and try again.';
+          errorMessage = 'Network error. The assessment has been saved offline and will sync when connection is restored.';
+          
+          // Try to save offline as fallback
+          try {
+            const photoId = `photo_${Date.now()}`;
+            await saveOfflineAssessment({
+              userId: user.uid,
+              created_at: Date.now(),
+              latitude: params.lat ? Number(params.lat) : null,
+              longitude: params.lon ? Number(params.lon) : null,
+              category: params.category as string,
+              element: params.element as string,
+              condition,
+              priority,
+              photo_uri: params.photoUri,
+              notes: params.notes || '',
+            }, [{ id: photoId, uri: params.photoUri }]);
+            
+            await refreshPendingCount();
+            router.replace('/(app)/(tabs)/history');
+            return;
+          } catch (offlineError) {
+            console.error('Failed to save offline:', offlineError);
+          }
         } else if (error.message.includes('permission')) {
           errorMessage = 'Permission error. Please make sure you have the necessary permissions.';
         }
       }
 
-      Alert.alert('Upload Failed', errorMessage, [{ text: 'OK' }]);
+      Alert.alert('Save Failed', errorMessage, [{ text: 'OK' }]);
     } finally {
       setSaving(false);
       setUploadingImage(false);
