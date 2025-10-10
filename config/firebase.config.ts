@@ -1,5 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import { getAuth, initializeAuth } from 'firebase/auth';
+import { getReactNativePersistence } from 'firebase/auth/react-native';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import Constants from 'expo-constants';
@@ -25,20 +26,29 @@ const adminApp = (() => {
 })();
 
 // Initialize Auth with persistence
-export const auth = Platform.OS === 'web' 
-  ? getAuth(app)
-  : initializeAuth(app, {
+export const auth = (() => {
+  if (Platform.OS === 'web') {
+    return getAuth(app);
+  }
+  try {
+    return initializeAuth(app, {
       persistence: getReactNativePersistence(AsyncStorage)
     });
+  } catch (_) {
+    // Already initialized during HMR; reuse existing instance
+    return getAuth(app);
+  }
+})();
 
 // Secondary auth bound to secondary app, used only for admin actions
 export const adminAuth = (() => {
+  if (Platform.OS === 'web') {
+    return getAuth(adminApp);
+  }
   try {
-    return Platform.OS === 'web'
-      ? getAuth(adminApp)
-      : initializeAuth(adminApp, { persistence: getReactNativePersistence(AsyncStorage) });
+    return initializeAuth(adminApp, { persistence: getReactNativePersistence(AsyncStorage) });
   } catch (_) {
-    // If already initialized, return existing instance
+    // Already initialized during HMR; reuse existing instance
     return getAuth(adminApp);
   }
 })();

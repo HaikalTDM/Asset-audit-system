@@ -8,7 +8,6 @@ import { useThemePreference } from '@/lib/theme-context';
 import { Card } from '@/components/ui/Card';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
-import * as FileSystem from 'expo-file-system/legacy';
 import { useFocusEffect } from '@react-navigation/native';
 import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,6 +32,7 @@ export default function Settings() {
   const { user, userProfile, signOut } = useAuth();
   const insets = useSafeAreaInsets();
   const [showDateFilterModal, setShowDateFilterModal] = React.useState(false);
+  const signingOutRef = React.useRef(false);
   
   // Profile edit states
   const [showNameModal, setShowNameModal] = React.useState(false);
@@ -332,7 +332,7 @@ export default function Settings() {
   const styles = createStyles(scheme);
 
   const calculateStorageMetrics = React.useCallback(async () => {
-    if (!user) {
+    if (signingOutRef.current || !user) {
       setStorageMetrics(null);
       setCalculationError(null);
       return;
@@ -345,13 +345,15 @@ export default function Settings() {
       console.log('Calculating Firebase storage metrics for user:', user.uid);
       const metrics = await StorageCalculationService.getFormattedUserStorageMetrics(user.uid);
       console.log('Storage metrics calculated:', metrics);
-      setStorageMetrics(metrics);
+      if (!signingOutRef.current) setStorageMetrics(metrics);
     } catch (error) {
       console.error('Error calculating storage metrics:', error);
-      setCalculationError(error instanceof Error ? error.message : 'Failed to calculate storage usage');
-      setStorageMetrics(null);
+      if (!signingOutRef.current) {
+        setCalculationError(error instanceof Error ? error.message : 'Failed to calculate storage usage');
+        setStorageMetrics(null);
+      }
     } finally {
-      setIsCalculating(false);
+      if (!signingOutRef.current) setIsCalculating(false);
     }
   }, [user]);
 
@@ -377,8 +379,8 @@ export default function Settings() {
         `Your data has been exported to CSV${filterText}.\n\nFile: ${path.split('/').pop()}\n\nImage URLs are included and clickable in Excel/Google Sheets.`,
         [{ text: 'OK' }]
       );
-    } catch (e: any) { 
-      Alert.alert('Export Failed', String(e?.message || e)); 
+    } catch (_error: any) { 
+      Alert.alert('Export Failed', String(_error?.message || _error)); 
     } finally { 
       setBusy(null); 
     }
@@ -554,7 +556,7 @@ export default function Settings() {
             try {
               await signOut();
               router.replace('/(auth)/sign-in');
-            } catch (error) {
+            } catch {
               Alert.alert('Error', 'Failed to sign out');
             }
           }

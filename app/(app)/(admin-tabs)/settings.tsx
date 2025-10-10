@@ -115,9 +115,10 @@ export default function AdminSettings() {
   const [calculationError, setCalculationError] = React.useState<string | null>(null);
   const { user, userProfile, signOut } = useAuth();
   const [showDateFilterModal, setShowDateFilterModal] = React.useState(false);
+  const signingOutRef = React.useRef(false);
 
   const calculateStorageMetrics = React.useCallback(async () => {
-    if (!user || userProfile?.role !== 'admin') {
+    if (signingOutRef.current || !user || userProfile?.role !== 'admin') {
       setStorageMetrics(null);
       setCalculationError(null);
       return;
@@ -151,13 +152,15 @@ export default function AdminSettings() {
         };
       }
       console.log('System storage metrics calculated:', metrics);
-      setStorageMetrics(metrics);
+      if (!signingOutRef.current) setStorageMetrics(metrics);
     } catch (error) {
       console.error('Error calculating storage metrics:', error);
-      setCalculationError(error instanceof Error ? error.message : 'Failed to calculate storage usage');
-      setStorageMetrics(null);
+      if (!signingOutRef.current) {
+        setCalculationError(error instanceof Error ? error.message : 'Failed to calculate storage usage');
+        setStorageMetrics(null);
+      }
     } finally {
-      setIsCalculating(false);
+      if (!signingOutRef.current) setIsCalculating(false);
     }
   }, [user, userProfile?.role]);
 
@@ -224,6 +227,7 @@ export default function AdminSettings() {
           style: 'destructive', 
           onPress: async () => {
             try {
+              signingOutRef.current = true;
               await signOut();
               router.replace('/(auth)/sign-in');
             } catch (error) {
