@@ -67,6 +67,12 @@ export default function Settings() {
       fontWeight: '700',
       marginBottom: 8
     },
+    rowBetween: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 8
+    },
     infoRow: {
       marginBottom: 16,
     },
@@ -771,16 +777,16 @@ export default function Settings() {
           <ThemedText style={styles.cardTitle}>About Asset Audit</ThemedText>
         </View>
         <View style={styles.rowBetween}>
-          <ThemedText style={styles.labelText}>Version</ThemedText>
+          <ThemedText>Version</ThemedText>
           <View style={[styles.badge, { backgroundColor: Colors[scheme].tint }]}>
-            <ThemedText style={styles.badgeText}>
+            <ThemedText style={{ color: '#fff', fontWeight: '700' }}>
               {Constants?.expoConfig?.version || (Constants as any)?.manifest?.version || Constants?.nativeAppVersion || '1.0.0'}
             </ThemedText>
           </View>
         </View>
         <View style={styles.rowBetween}>
-          <ThemedText style={styles.labelText}>Platform</ThemedText>
-          <ThemedText style={styles.valueText}>
+          <ThemedText>Platform</ThemedText>
+          <ThemedText style={{ opacity: 0.9 }}>
             {Platform.OS === 'web' ? 'Mobile Web App' : Platform.OS === 'ios' ? 'iOS App' : 'Android App'}
           </ThemedText>
         </View>
@@ -937,7 +943,7 @@ export default function Settings() {
               }]}>
                 <Ionicons name="shield-checkmark" size={20} color={Colors[scheme].tint} />
                 <ThemedText style={styles.infoText}>
-                  For security, you'll need your current password to make changes
+                  For security, you&apos;ll need your current password to make changes
                 </ThemedText>
               </View>
             </ScrollView>

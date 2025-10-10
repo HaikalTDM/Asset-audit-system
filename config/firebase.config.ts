@@ -11,7 +11,7 @@ const firebaseConfig = {
   apiKey: Constants.expoConfig?.extra?.firebaseApiKey ?? "AIzaSyCCHQVZmrtni-cHoAtMyexuSgxDpPjvWTI",
   authDomain: Constants.expoConfig?.extra?.firebaseAuthDomain ?? "asset-audit-v1.firebaseapp.com",
   projectId: Constants.expoConfig?.extra?.firebaseProjectId ?? "asset-audit-v1",
-  storageBucket: Constants.expoConfig?.extra?.firebaseStorageBucket ?? "asset-audit-v1.firebasestorage.app",
+  storageBucket: Constants.expoConfig?.extra?.firebaseStorageBucket ?? "asset-audit-v1.appspot.com",
   messagingSenderId: Constants.expoConfig?.extra?.firebaseMessagingSenderId ?? "931887232708",
   appId: Constants.expoConfig?.extra?.firebaseAppId ?? "1:931887232708:web:4dd39703a427dd5e9a7b91"
 };
