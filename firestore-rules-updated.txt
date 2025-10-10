@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to get user role (with error handling)
+    function getUserRole() {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return userDoc != null ? userDoc.data.role : null;
+    }
+
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return getUserRole() == 'admin';
+    }
+
+    // Helper function to check if user is staff
+    function isStaff() {
+      return getUserRole() == 'staff';
+    }
+
+    // Helper function to check if user is active (with fallback)
+    function isActiveUser() {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return userDoc != null ? (userDoc.data.isActive == true) : true;
+    }
+    
+    // Users collection - user profile management
+    match /users/{userId} {
+      // Users can read their own profile
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Users can create their own profile during signup
+      allow create: if request.auth != null && request.auth.uid == userId;
+      
+      // Users can update their own profile (except role)
+      allow update: if request.auth != null && request.auth.uid == userId 
+                    && !('role' in request.resource.data.diff(resource.data).affectedKeys());
+      
+      // Admins can read all user profiles (simplified - removed isActiveUser check to avoid circular dependency)
+      allow read: if request.auth != null && getUserRole() == 'admin';
+      
+      // Admins can create, update, and delete user profiles
+      allow create, update: if request.auth != null && getUserRole() == 'admin';
+      allow delete: if request.auth != null && getUserRole() == 'admin';
+    }
+    
+    // Assessments collection - assessment data
+    match /assessments/{assessmentId} {
+      // Staff and admins can create assessments
+      allow create: if request.auth != null 
+                    && (getUserRole() == 'staff' || getUserRole() == 'admin')
+                    && isActiveUser()
+                    && request.resource.data.userId == request.auth.uid;
+      
+      // Users can read their own assessments
+      allow read: if request.auth != null 
+                  && resource.data.userId == request.auth.uid 
+                  && isActiveUser();
+      
+      // Admins can read ALL assessments (critical for storage metrics and admin dashboard)
+      allow read: if request.auth != null && getUserRole() == 'admin';
+      
+      // Users can update their own assessments
+      allow update: if request.auth != null 
+                    && resource.data.userId == request.auth.uid 
+                    && isActiveUser();
+      
+      // Users can delete their own assessments
+      allow delete: if request.auth != null 
+                    && resource.data.userId == request.auth.uid 
+                    && isActiveUser();
+      
+      // Admins can delete any assessment
+      allow delete: if request.auth != null && getUserRole() == 'admin';
+    }
+  }
+}
+

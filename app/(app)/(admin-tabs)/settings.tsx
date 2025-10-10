@@ -117,7 +117,7 @@ export default function AdminSettings() {
   const [showDateFilterModal, setShowDateFilterModal] = React.useState(false);
 
   const calculateStorageMetrics = React.useCallback(async () => {
-    if (!user) {
+    if (!user || userProfile?.role !== 'admin') {
       setStorageMetrics(null);
       setCalculationError(null);
       return;
@@ -159,7 +159,7 @@ export default function AdminSettings() {
     } finally {
       setIsCalculating(false);
     }
-  }, [user]);
+  }, [user, userProfile?.role]);
 
   React.useEffect(() => { calculateStorageMetrics(); }, [calculateStorageMetrics]);
   useFocusEffect(React.useCallback(() => { calculateStorageMetrics(); }, [calculateStorageMetrics]));
