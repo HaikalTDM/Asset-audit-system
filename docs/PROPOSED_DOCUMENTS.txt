@@ -1,0 +1,55 @@
+Proposed Documentation Set
+
+1) Architecture Overview (docs/PROJECT_OVERVIEW.txt)
+- Audience: Developers, maintainers
+- Content: High-level architecture, routing, providers, modules, data model, offline sync, security rules, theming/responsive, folder map, extension tips
+
+2) Setup & Environment Guide
+- Audience: Developers
+- Content: Prereqs, Node/Expo versions, Firebase project setup, .env or config values, running on iOS/Android/Web, troubleshooting
+- Status: Reference existing FIREBASE_SETUP_GUIDE.md; add local run steps and Expo account notes
+
+3) Firebase & Security Rules
+- Audience: Developers, admins
+- Content: Auth providers, Firestore/Storage structure, security rules rationale, how to deploy/update rules, RBAC mapping
+- Status: Covered by FIREBASE_SECURITY_RULES.md, firestore-rules-complete.txt, storage-rules-complete.txt; consolidate into one concise README
+
+4) RBAC & User Management
+- Audience: Product, admins, developers
+- Content: Roles (staff/admin), allowed actions, admin secondary app usage, admin screens (dashboard, users, settings), how to create the first super admin, activation/deactivation
+- Status: Expand RBAC_IMPLEMENTATION_SUMMARY.md with UI screenshots and common workflows
+
+5) Offline-first & Sync Guide
+- Audience: Developers, QA
+- Content: Offline data model (SQLite, queue, offlineStorage), network quality, auto/manual sync flow, retry/backoff, conflict handling, testing offline scenarios, known limitations
+
+6) Data Model & ID Strategy
+- Audience: Developers
+- Content: Firestore schema for users/assessments, field types, constraints, ID generation (ddmmyyyy-xxxxx), scale considerations, migration notes
+
+7) Import/Export & Reporting
+- Audience: Admins, support, developers
+- Content: CSV export/import flows, filters and date presets, expected columns, image URL handling, PDF report generation (single/batch), file size tips
+- Status: Reference PDF_GENERATION_GUIDE.md and expand with examples
+
+8) Theming & Responsive Design
+- Audience: Developers, designers
+- Content: Theme colors/typography, ResponsiveUtils API, caps/mins, accessibility helpers, testing strategy, adding components using design system
+
+9) Testing & Quality Gates
+- Audience: Developers
+- Content: Jest setup, responsive typography tests, suggested new tests (auth flows, offline sync unit tests, Firestore service CRUD, image upload retries), linting and typechecking
+
+10) Operations & Maintenance
+- Audience: Maintainers
+- Content: Clearing system data safely, backups/export cadence, monitoring Firebase usage, handling large datasets, cleaning Storage orphaned files, versioning and release notes
+
+Appendix: User Guides (optional)
+- Staff Quick Start: Capture → Assess → Review → Save. History, filters, PDF export, settings, password change.
+- Admin Quick Start: Dashboard matrix, managing users (promote/demote, activate/deactivate, delete), system export/import, storage overview.
+
+Deliverable Plan
+- Convert each item into a markdown doc under docs/
+- Keep screenshots/gifs in docs/assets/
+- Cross-link existing repo guides to avoid duplication
+- Aim for 1–2 pages per topic with task-focused sections

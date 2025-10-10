@@ -1,0 +1,112 @@
+Asset Audit System — Project Overview
+
+Purpose
+- Mobile-first app for capturing asset assessments with photos, scoring (condition × priority), and notes
+- Offline-first with background sync to Firebase (Auth, Firestore, Storage)
+- Role-based access (staff, admin) with separate admin dashboards and tools
+
+High-level Architecture
+- Client: Expo + React Native using expo-router (file-based routing)
+- Auth: Firebase Authentication; user profiles in Firestore; secondary admin app for privileged ops
+- Data: Firestore collections (users, assessments), Storage for images
+- Offline: SQLite queue + local photo cache; sync service with retry/backoff and progress
+- Theming/Responsive: Light/Dark themes; responsive typography and spacing utilities
+
+Key Providers and App Shell
+- app/_layout.tsx wraps global providers: ThemeProvider, AuthProvider, OfflineProvider; RouteProtection enforces auth + role access
+- app/index.tsx handles boot routing: unauthenticated → (auth)/sign-in; staff → (app)/(tabs); admin → (app)/(admin-tabs)
+
+Navigation Map (expo-router)
+- (auth): sign-in, sign-up
+- (app)/(tabs): index (staff dashboard/home), capture, assess, history, settings
+- (app)/(admin-tabs): index (admin dashboard), users (user mgmt), settings (admin settings), all-assessments (optional route referenced in code)
+- Other: history/[id] (detail screen), review (pre-save summary), modal, sync-status
+
+Roles & Access
+- Staff: Create and manage own assessments; view own history; settings; export/import own CSV
+- Admin: Everything staff can do plus: system-wide dashboards, manage users (role change, activate/deactivate, reset password, delete), export/import all data, clear all system data
+- RouteProtection guards tab groups by role; RoleGuard wrappers (AdminOnly, StaffOnly, StaffOrAdmin)
+
+Core Modules
+- lib/auth/AuthContext.tsx
+  - Observes Firebase auth state; loads Firestore user profile
+  - API: signIn, signOut, signUp (creates user profile), adminCreateUser (uses secondary adminAuth/adminDb)
+  - Helpers: hasRole, isAdmin, isStaff, refreshUserProfile
+- config/firebase.config.ts
+  - Initializes primary and secondary Firebase apps; exports auth, db, storage, adminAuth, adminDb
+- lib/firestore.ts (FirestoreService)
+  - Users: create/get/update role/active, deleteUser (cascades assessments + Storage)
+  - Assessments: create (with image upload), list (by user), listAll (admin), get/update/delete
+  - Custom ID generation pattern: ddmmyyyy-xxxxx (client-side scan)
+  - Utilities: clearUserData, clearAllSystemData
+- Offline subsystem (lib/offline)
+  - networkMonitor.ts: connectivity + quality; hooks and helpers
+  - OfflineContext.tsx: sync state, auto-sync triggers, manual sync, retry, progress reporting
+  - offlineStorage.ts: persist pending assessments/photos, status updates, cleanup
+  - syncQueue.ts: queue of create/update/delete operations with retries and prioritization
+  - syncService.ts: batch sync assessments with photos (exponential backoff)
+- Local data adapters
+  - lib/db.ts (native) and lib/db.web.ts (web fallback) for simple local storage/ID generation
+  - lib/db/sqlite.ts for queue/offline metadata
+- Utilities
+  - imageUpload.ts: upload with retry, deletion by path/URL
+  - exportImport.ts: CSV export/import (with image URLs)
+  - storageCalculation.ts: estimate storage usage per user/system; formatting helpers
+  - pdf/pdfGenerator.ts: single/batch PDF from templated HTML; share helpers
+
+Feature Flows
+- Capture → Assess → Review → Save
+  1) capture.tsx: take photo or pick from library; try EXIF GPS, else get current GPS
+  2) assess.tsx: choose category/element; set condition/priority; add notes
+  3) review.tsx: summary and save
+     - Online: upload image to Storage, create Firestore assessment
+     - Offline: save to offline store; sync later
+- History
+  - history.tsx: list user assessments; filters (date presets, category); delete; batch PDF export
+  - history/[id].tsx: view details (not included in read here but referenced)
+- Dashboards
+  - Staff home (tabs/index.tsx): summary metrics, recent activity, quick start
+  - Admin dashboard (admin-tabs/index.tsx): totals, active users, risk matrix (priority × condition), recent assessments
+- Settings
+  - Staff settings: profile (edit display name, upload avatar), security (change password), appearance, data export/import, clear my data, storage usage
+  - Admin settings: admin profile, quick links, appearance, system-wide export/import, clear all data, system storage usage
+- Sync Status
+  - sync-status.tsx: network state, pending/failed items, manual sync/retry with progress bar
+
+Data Model (Firestore)
+- users (document id = auth uid)
+  - displayName, email, role: 'staff' | 'admin', isActive: boolean, created_at
+- assessments
+  - id: ddmmyyyy-xxxxx, userId, category, element, condition (1-5), priority (1-5), notes, photo_uri (download URL), created_at, latitude?, longitude?
+
+Security & RBAC
+- See FIREBASE_SECURITY_RULES.md and firestore-rules-complete.txt
+- Admins can manage users and delete any assessment
+- Staff limited to own documents and safe operations
+- Storage rules align with Firestore rules
+
+Theming & Responsive
+- constants/theme.ts: light/dark palette, platform font stacks
+- constants/responsive.ts: device/platform detection, spacing, typography with caps/mins, shadows, helpers; tests ensure bounds
+
+Testing
+- __tests__/responsive-typography.test.ts ensures responsive typography scaling caps at 48 and min 12; phone/tablet behaviors
+
+Known Considerations
+- Assessment ID generation scans collection for date prefix; may need server-side allocator or Firestore counter at scale
+- Offline sync handles retries/backoff; ensure Storage/Firestore rules remain in sync with app behavior
+
+Folder Map (selected)
+- app/: expo-router routes and layouts
+- components/: UI primitives (Button, Card, Input, SyncStatusIndicator, etc.)
+- config/: Firebase config
+- lib/: Auth, Firestore, offline subsystem, utilities, PDF
+- constants/: theme and responsive utilities
+- hooks/: theme color/scheme helpers
+- scripts/: testing/jest helpers, UI validation utilities
+- docs/: documentation (this file)
+
+How to Extend
+- Add new assessment fields: update FirestoreService types/CRUD, forms in assess/review, PDF/export, and rules
+- New roles: extend role enums and RouteProtection/RoleGuard and rules
+- Large data export: consider Cloud Functions; paginate listAllAssessments
