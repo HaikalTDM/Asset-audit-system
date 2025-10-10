@@ -16,6 +16,7 @@ export default function UserManagement() {
   const [error, setError] = React.useState<string | null>(null);
   const [createModalVisible, setCreateModalVisible] = React.useState(false);
   const [emailModalVisible, setEmailModalVisible] = React.useState(false);
+  const [passwordModalVisible, setPasswordModalVisible] = React.useState(false);
   const [menuVisibleUserId, setMenuVisibleUserId] = React.useState<string | null>(null);
   const [selectedUser, setSelectedUser] = React.useState<UserProfile | null>(null);
   const [newUserData, setNewUserData] = React.useState({
@@ -25,6 +26,9 @@ export default function UserManagement() {
     role: 'staff' as UserRole,
   });
   const [newEmail, setNewEmail] = React.useState('');
+  const [newPassword, setNewPassword] = React.useState('');
+  const [confirmPassword, setConfirmPassword] = React.useState('');
+  const [userStats, setUserStats] = React.useState<{ [userId: string]: number }>({});
   const [creating, setCreating] = React.useState(false);
   const [updating, setUpdating] = React.useState(false);
   const scheme = useColorScheme() ?? 'light';
@@ -38,6 +42,14 @@ export default function UserManagement() {
       setError(null);
       const allUsers = await FirestoreService.listAllUsers();
       setUsers(allUsers);
+
+      // Load assessment counts for each user
+      const allAssessments = await FirestoreService.listAllAssessments();
+      const stats: { [userId: string]: number } = {};
+      allAssessments.forEach(assessment => {
+        stats[assessment.userId] = (stats[assessment.userId] || 0) + 1;
+      });
+      setUserStats(stats);
     } catch (err) {
       console.error('Error loading users:', err);
       setError('Failed to load users. Please try again.');
@@ -204,6 +216,123 @@ export default function UserManagement() {
     );
   };
 
+  const openPasswordModal = (targetUser: UserProfile) => {
+    setSelectedUser(targetUser);
+    setNewPassword('');
+    setConfirmPassword('');
+    setMenuVisibleUserId(null);
+    setPasswordModalVisible(true);
+  };
+
+  const handleChangePassword = async () => {
+    if (!selectedUser) return;
+
+    // Validation
+    if (!newPassword || !confirmPassword) {
+      Alert.alert('Error', 'Please fill in both password fields');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
+
+    Alert.alert(
+      'Confirm Password Change',
+      `Reset password for ${selectedUser.displayName}?\n\nThe user will be signed out and must sign in with their new password.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Change Password',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setUpdating(true);
+              
+              // Note: Firebase Admin SDK is needed for true password reset
+              // For now, we'll show instructions to the admin
+              Alert.alert(
+                'Password Change',
+                `To change ${selectedUser.displayName}'s password:\n\n1. Use Firebase Console > Authentication\n2. Select the user\n3. Click "Reset Password"\n4. Or send password reset email\n\nAlternatively, delete and recreate the user with a new password.`
+              );
+              
+              setPasswordModalVisible(false);
+              setNewPassword('');
+              setConfirmPassword('');
+              setSelectedUser(null);
+            } catch (error: any) {
+              Alert.alert('Error', error?.message || 'Failed to change password');
+            } finally {
+              setUpdating(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleToggleActive = async (targetUser: UserProfile) => {
+    const newStatus = !targetUser.isActive;
+    
+    Alert.alert(
+      newStatus ? 'Activate User' : 'Deactivate User',
+      `${newStatus ? 'Activate' : 'Deactivate'} ${targetUser.displayName}?\n\n${newStatus ? 'User will be able to sign in.' : 'User will be unable to sign in.'}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: newStatus ? 'Activate' : 'Deactivate',
+          style: newStatus ? 'default' : 'destructive',
+          onPress: async () => {
+            try {
+              await FirestoreService.updateUserActiveStatus(targetUser.id, newStatus);
+              Alert.alert('Success', `User ${newStatus ? 'activated' : 'deactivated'} successfully`);
+              await load();
+            } catch (error: any) {
+              Alert.alert('Error', error?.message || 'Failed to update user status');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleDeleteUser = async (targetUser: UserProfile) => {
+    // Prevent deleting yourself
+    if (targetUser.id === user?.uid) {
+      Alert.alert('Error', 'You cannot delete your own account');
+      return;
+    }
+
+    const assessmentCount = userStats[targetUser.id] || 0;
+
+    Alert.alert(
+      'Delete User',
+      `Permanently delete ${targetUser.displayName}?\n\n⚠️ This will also delete:\n• ${assessmentCount} assessment${assessmentCount !== 1 ? 's' : ''}\n• All associated photos\n• All user data\n\nThis action CANNOT be undone!`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await FirestoreService.deleteUser(targetUser.id);
+              Alert.alert('Success', 'User and all associated data deleted successfully');
+              await load();
+            } catch (error: any) {
+              Alert.alert('Error', error?.message || 'Failed to delete user');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const renderUserItem = ({ item }: { item: UserProfile }) => {
     const isMenuVisible = menuVisibleUserId === item.id;
     
@@ -231,7 +360,7 @@ export default function UserManagement() {
             </View>
             
             <ThemedText style={styles.userDate}>
-              Joined: {new Date(item.created_at).toLocaleDateString()}
+              Joined: {new Date(item.created_at).toLocaleDateString()} • {userStats[item.id] || 0} assessment{(userStats[item.id] || 0) !== 1 ? 's' : ''}
             </ThemedText>
           </View>
           
@@ -259,6 +388,15 @@ export default function UserManagement() {
               <ThemedText style={styles.menuItemText}>Change Email</ThemedText>
             </TouchableOpacity>
 
+            {/* Change Password */}
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => openPasswordModal(item)}
+            >
+              <Ionicons name="key-outline" size={20} color="#8b5cf6" />
+              <ThemedText style={styles.menuItemText}>Change Password</ThemedText>
+            </TouchableOpacity>
+
             {/* Promote / Demote */}
             {item.role === 'staff' ? (
               <TouchableOpacity
@@ -283,6 +421,39 @@ export default function UserManagement() {
                 <ThemedText style={styles.menuItemText}>Demote to Staff</ThemedText>
               </TouchableOpacity>
             )}
+
+            {/* Activate / Deactivate */}
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisibleUserId(null);
+                handleToggleActive(item);
+              }}
+            >
+              <Ionicons 
+                name={item.isActive ? "ban-outline" : "checkmark-circle-outline"} 
+                size={20} 
+                color={item.isActive ? "#f59e0b" : "#10b981"} 
+              />
+              <ThemedText style={styles.menuItemText}>
+                {item.isActive ? 'Deactivate User' : 'Activate User'}
+              </ThemedText>
+            </TouchableOpacity>
+
+            {/* Delete User */}
+            <TouchableOpacity
+              style={[styles.menuItem, styles.dangerMenuItem]}
+              onPress={() => {
+                setMenuVisibleUserId(null);
+                handleDeleteUser(item);
+              }}
+              disabled={item.id === user?.uid}
+            >
+              <Ionicons name="trash-outline" size={20} color="#ef4444" />
+              <ThemedText style={[styles.menuItemText, { color: '#ef4444' }]}>
+                Delete User
+              </ThemedText>
+            </TouchableOpacity>
           </View>
         )}
       </Card>
@@ -552,6 +723,104 @@ export default function UserManagement() {
           </View>
         </View>
       </Modal>
+
+      {/* Change Password Modal */}
+      <Modal
+        visible={passwordModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPasswordModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: Colors[scheme].card }]}>
+            <View style={styles.modalHeader}>
+              <View>
+                <ThemedText style={styles.modalTitle}>Change User Password</ThemedText>
+                <ThemedText style={styles.modalSubtitle}>
+                  {selectedUser?.displayName}
+                </ThemedText>
+              </View>
+              <TouchableOpacity
+                onPress={() => setPasswordModalVisible(false)}
+                style={[styles.closeIconButton, { backgroundColor: Colors[scheme].background }]}
+              >
+                <Ionicons name="close" size={24} color={Colors[scheme].text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
+              <View style={styles.inputGroup}>
+                <ThemedText style={styles.inputLabel}>New Password</ThemedText>
+                <TextInput
+                  style={[styles.input, { 
+                    color: Colors[scheme].text,
+                    backgroundColor: Colors[scheme].background,
+                    borderColor: Colors[scheme].border,
+                  }]}
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  placeholder="Minimum 6 characters"
+                  placeholderTextColor={Colors[scheme].text + '60'}
+                  secureTextEntry
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <ThemedText style={styles.inputLabel}>Confirm New Password</ThemedText>
+                <TextInput
+                  style={[styles.input, { 
+                    color: Colors[scheme].text,
+                    backgroundColor: Colors[scheme].background,
+                    borderColor: Colors[scheme].border,
+                  }]}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder="Re-enter password"
+                  placeholderTextColor={Colors[scheme].text + '60'}
+                  secureTextEntry
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <View style={[styles.warningBox, {
+                backgroundColor: '#fef3c7',
+                borderColor: '#f59e0b',
+              }]}>
+                <Ionicons name="information-circle" size={20} color="#f59e0b" />
+                <View style={{ flex: 1 }}>
+                  <ThemedText style={[styles.warningTitle, { color: '#92400e' }]}>
+                    Password Reset Instructions
+                  </ThemedText>
+                  <ThemedText style={[styles.warningText, { color: '#92400e' }]}>
+                    Due to Firebase security, password changes require Firebase Console access.{'\n\n'}
+                    To reset password:{'\n'}
+                    1. Open Firebase Console{'\n'}
+                    2. Go to Authentication{'\n'}
+                    3. Find the user{'\n'}
+                    4. Click "Reset Password"
+                  </ThemedText>
+                </View>
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalActions}>
+              <Button
+                title="Cancel"
+                onPress={() => setPasswordModalVisible(false)}
+                variant="secondary"
+                style={{ flex: 1 }}
+              />
+              <View style={{ width: 8 }} />
+              <Button
+                title="View Instructions"
+                onPress={handleChangePassword}
+                style={{ flex: 1 }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -691,6 +960,9 @@ const styles = StyleSheet.create({
   menuItemText: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  dangerMenuItem: {
+    backgroundColor: '#fef2f2',
   },
   modalOverlay: {
     flex: 1,

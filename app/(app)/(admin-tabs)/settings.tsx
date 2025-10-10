@@ -16,42 +16,133 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { FirestoreService } from '@/lib/firestore';
 import { router } from 'expo-router';
 import { DateFilterModal } from '@/components/ui/DateFilterModal';
+import { StorageCalculationService, type FormattedStorageMetrics } from '@/lib/storageCalculation';
+
+// Create dynamic styles based on current color scheme
+const createStyles = (scheme: 'light' | 'dark') => StyleSheet.create({
+  container: { padding: 16, gap: 16 },
+  cardTitle: { fontWeight: '700', marginBottom: 8 },
+  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 },
+  badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
+  
+  // Storage metrics styles
+  loadingContainer: {
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors[scheme].card,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  loadingText: {
+    fontSize: 14,
+    opacity: 0.8,
+  },
+  errorContainer: {
+    padding: 16,
+    backgroundColor: scheme === 'dark' ? '#7f1d1d' : '#fee2e2',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  errorText: {
+    color: scheme === 'dark' ? '#fca5a5' : '#dc2626',
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  noDataContainer: {
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors[scheme].card,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  noDataText: {
+    fontSize: 14,
+    opacity: 0.8,
+    marginBottom: 8,
+  },
+  metricsContainer: {
+    backgroundColor: Colors[scheme].card,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+  metricRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  metricLabel: {
+    fontSize: 14,
+    opacity: 0.8,
+  },
+  metricValue: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  totalRow: {
+    borderTopWidth: 1,
+    borderTopColor: Colors[scheme].border,
+    marginTop: 8,
+    paddingTop: 8,
+  },
+  totalLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  totalValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors[scheme].tint,
+  },
+  lastUpdated: {
+    fontSize: 12,
+    opacity: 0.6,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+});
 
 export default function AdminSettings() {
   const scheme = useColorScheme() ?? 'light';
+  const styles = createStyles(scheme);
   const [busy, setBusy] = React.useState<'export' | 'import' | null>(null);
   const { preferred, setPreferred } = useThemePreference();
-  const [counts, setCounts] = React.useState({ total: 0, sizeKB: 0 });
+  const [storageMetrics, setStorageMetrics] = React.useState<FormattedStorageMetrics | null>(null);
+  const [isCalculating, setIsCalculating] = React.useState(false);
+  const [calculationError, setCalculationError] = React.useState<string | null>(null);
   const { user, userProfile, signOut } = useAuth();
   const [showDateFilterModal, setShowDateFilterModal] = React.useState(false);
 
-  const recalc = React.useCallback(async () => {
-    // Admin can see all assessments
-    const rows = await FirestoreService.listAllAssessments();
-    let bytes = 0;
-
-    const FS: any = FileSystem as any;
-    const doc = FS.documentDirectory as string | undefined;
-    const cache = FS.cacheDirectory as string | undefined;
-    const photoDirs = [doc ? doc + 'photos/' : null, cache ? cache + 'photos/' : null].filter(Boolean) as string[];
-    for (const dir of photoDirs) {
-      try {
-        const names = await FileSystem.readDirectoryAsync(dir);
-        for (const name of names) {
-          try {
-            const info = await FileSystem.getInfoAsync(dir + name, { size: true } as any);
-            if ((info as any).exists && typeof (info as any).size === 'number') bytes += (info as any).size as number;
-          } catch {}
-        }
-      } catch {}
+  const calculateStorageMetrics = React.useCallback(async () => {
+    if (!user) {
+      setStorageMetrics(null);
+      setCalculationError(null);
+      return;
     }
 
-    setCounts({ total: rows.length, sizeKB: Math.round(bytes / 1024) });
-  }, []);
+    setIsCalculating(true);
+    setCalculationError(null);
 
-  useFocusEffect(React.useCallback(() => {
-    recalc();
-  }, [recalc]));
+    try {
+      console.log('Calculating ALL Firebase storage metrics (admin view)');
+      // Admin views ALL system storage
+      const metrics = await StorageCalculationService.getFormattedSystemStorageMetrics();
+      console.log('System storage metrics calculated:', metrics);
+      setStorageMetrics(metrics);
+    } catch (error) {
+      console.error('Error calculating storage metrics:', error);
+      setCalculationError(error instanceof Error ? error.message : 'Failed to calculate storage usage');
+      setStorageMetrics(null);
+    } finally {
+      setIsCalculating(false);
+    }
+  }, [user]);
+
+  React.useEffect(() => { calculateStorageMetrics(); }, [calculateStorageMetrics]);
+  useFocusEffect(React.useCallback(() => { calculateStorageMetrics(); }, [calculateStorageMetrics]));
 
   const handleExportWithFilter = async (filters: ExportFilters | null) => {
     try { 
@@ -93,7 +184,7 @@ export default function AdminSettings() {
           'CSV data has been imported successfully.\n\nNote: Images must already be in Firebase Storage (via exported URLs).',
           [{ text: 'OK' }]
         ); 
-        await recalc(); 
+        await calculateStorageMetrics(); 
       }
     } catch (e: any) { 
       Alert.alert('Import Failed', String(e?.message || e)); 
@@ -185,8 +276,67 @@ export default function AdminSettings() {
 
       {/* Data Management */}
       <Card>
-        <ThemedText style={styles.cardTitle}>Data Management</ThemedText>
-        <ThemedText style={{ marginBottom: 8 }}>Total Audits: {counts.total}   •   Storage: {counts.sizeKB} KB</ThemedText>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+          <Ionicons name="server-outline" size={18} color={Colors[scheme].text} style={{ marginRight: 6 }} />
+          <ThemedText style={styles.cardTitle}>Data Management (All System Data)</ThemedText>
+        </View>
+
+        {/* Storage Metrics Display */}
+        {isCalculating ? (
+          <View style={styles.loadingContainer}>
+            <ThemedText style={styles.loadingText}>Calculating system storage usage...</ThemedText>
+          </View>
+        ) : calculationError ? (
+          <View style={styles.errorContainer}>
+            <ThemedText style={styles.errorText}>Error: {calculationError}</ThemedText>
+            <Button
+              title="Retry Calculation"
+              onPress={calculateStorageMetrics}
+              variant="secondary"
+              size="sm"
+            />
+          </View>
+        ) : storageMetrics ? (
+          <View style={styles.metricsContainer}>
+            <View style={styles.metricRow}>
+              <ThemedText style={styles.metricLabel}>Total Assessments:</ThemedText>
+              <ThemedText style={styles.metricValue}>{storageMetrics.assessmentCount}</ThemedText>
+            </View>
+            <View style={styles.metricRow}>
+              <ThemedText style={styles.metricLabel}>Images Stored:</ThemedText>
+              <ThemedText style={styles.metricValue}>{storageMetrics.imageCount}</ThemedText>
+            </View>
+            <View style={styles.metricRow}>
+              <ThemedText style={styles.metricLabel}>Firestore Data:</ThemedText>
+              <ThemedText style={styles.metricValue}>{storageMetrics.formattedFirestoreSize}</ThemedText>
+            </View>
+            <View style={styles.metricRow}>
+              <ThemedText style={styles.metricLabel}>Image Storage:</ThemedText>
+              <ThemedText style={styles.metricValue}>{storageMetrics.formattedStorageSize}</ThemedText>
+            </View>
+            <View style={[styles.metricRow, styles.totalRow]}>
+              <ThemedText style={styles.totalLabel}>Total Storage:</ThemedText>
+              <ThemedText style={styles.totalValue}>{storageMetrics.formattedTotalSize}</ThemedText>
+            </View>
+            <ThemedText style={styles.lastUpdated}>
+              Last updated: {new Date(storageMetrics.lastCalculated).toLocaleString()}
+            </ThemedText>
+          </View>
+        ) : (
+          <View style={styles.noDataContainer}>
+            <ThemedText style={styles.noDataText}>No storage data available</ThemedText>
+            <Button
+              title="Calculate Storage"
+              onPress={calculateStorageMetrics}
+              variant="secondary"
+              size="sm"
+            />
+          </View>
+        )}
+
+        <View style={{ height: 16 }} />
+
+        {/* Action Buttons */}
         <Button title={busy === 'export' ? 'Exporting...' : 'Export All Data to CSV'} onPress={onExport} disabled={!!busy} />
         <View style={{ height: 8 }} />
         <Button title={busy === 'import' ? 'Importing...' : 'Import Data from CSV'} onPress={onImport} disabled={!!busy} variant="secondary" />
@@ -196,7 +346,7 @@ export default function AdminSettings() {
             { text: 'Cancel', style: 'cancel' },
             { text: 'Delete All', style: 'destructive', onPress: async () => {
               await FirestoreService.clearAllSystemData();
-              await recalc();
+              await calculateStorageMetrics();
             } },
           ]);
         }} variant="danger" />
@@ -233,10 +383,3 @@ export default function AdminSettings() {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { padding: 16, gap: 16 },
-  cardTitle: { fontWeight: '700', marginBottom: 8 },
-  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 },
-  badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
-});

@@ -1,5 +1,6 @@
 import { collection, getDocs, doc, getDoc, updateDoc, deleteDoc, query, where, orderBy, setDoc } from 'firebase/firestore';
-import { db } from '@/config/firebase.config';
+import { ref, deleteObject } from 'firebase/storage';
+import { db, storage } from '@/config/firebase.config';
 import { ImageUploadService } from './imageUpload';
 
 export type UserRole = 'staff' | 'admin';
@@ -86,6 +87,64 @@ export class FirestoreService {
       });
     } catch (error) {
       console.error('Error updating user email:', error);
+      throw error;
+    }
+  }
+
+  static async updateUserActiveStatus(userId: string, isActive: boolean) {
+    try {
+      const docRef = doc(db, 'users', userId);
+      await updateDoc(docRef, {
+        isActive: isActive,
+        updated_at: Date.now(),
+      });
+    } catch (error) {
+      console.error('Error updating user active status:', error);
+      throw error;
+    }
+  }
+
+  static async deleteUser(userId: string) {
+    try {
+      // Delete all user's assessments first
+      const assessmentsQuery = query(
+        collection(db, 'assessments'),
+        where('userId', '==', userId)
+      );
+      const assessmentsSnapshot = await getDocs(assessmentsQuery);
+      
+      // Delete all assessments and their photos
+      const deletePromises = assessmentsSnapshot.docs.map(async (assessmentDoc) => {
+        // Delete from firestore
+        await deleteDoc(assessmentDoc.ref);
+        
+        // Delete associated photo from storage if it exists
+        const assessment = assessmentDoc.data();
+        if (assessment.photo_uri) {
+          try {
+            // Extract the path from the URL
+            const photoPath = assessment.photo_uri.split('/o/')[1]?.split('?')[0];
+            if (photoPath) {
+              const decodedPath = decodeURIComponent(photoPath);
+              const photoRef = ref(storage, decodedPath);
+              await deleteObject(photoRef);
+            }
+          } catch (photoError) {
+            console.warn('Error deleting photo:', photoError);
+            // Continue even if photo deletion fails
+          }
+        }
+      });
+      
+      await Promise.all(deletePromises);
+      
+      // Finally, delete the user document
+      const userDocRef = doc(db, 'users', userId);
+      await deleteDoc(userDocRef);
+      
+      console.log(`Deleted user ${userId} and ${assessmentsSnapshot.docs.length} assessments`);
+    } catch (error) {
+      console.error('Error deleting user:', error);
       throw error;
     }
   }

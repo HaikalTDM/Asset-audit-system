@@ -113,11 +113,38 @@ export default function AdminDashboard() {
     return labels[priority] || 'Unknown';
   };
 
-  const getMatrixCellColor = (count: number) => {
+  /**
+   * Calculate risk score based on priority and condition
+   * Lower priority number (1=Very High) + Higher condition number (5=Critical) = Higher risk
+   * Using formula: (6 - priority) * condition
+   * This gives us scores from 1 (Very Low priority + Excellent condition) to 25 (Very High priority + Critical condition)
+   */
+  const getRiskScore = (priority: number, condition: number) => {
+    return (6 - priority) * condition;
+  };
+
+  const getRiskLabel = (priority: number, condition: number) => {
+    const riskScore = getRiskScore(priority, condition);
+    if (riskScore <= 8) return 'Low';
+    if (riskScore <= 15) return 'Medium';
+    if (riskScore <= 20) return 'High';
+    return 'Critical';
+  };
+
+  const getMatrixCellColor = (priority: number, condition: number, count: number) => {
     if (count === 0) return scheme === 'dark' ? '#1a1a1a' : '#f8f9fa';
-    if (count <= 2) return scheme === 'dark' ? '#2d5f5d' : '#a7f3d0'; // Light green
-    if (count <= 5) return scheme === 'dark' ? '#6b5d2d' : '#fef3c7'; // Yellow
-    if (count <= 10) return scheme === 'dark' ? '#6b4423' : '#fed7aa'; // Orange
+    
+    const riskScore = getRiskScore(priority, condition);
+    
+    // Risk score ranges from 1-25
+    // 1-8: Green (Low risk)
+    // 9-15: Yellow (Medium risk)
+    // 16-20: Orange (High risk)
+    // 21-25: Red (Critical risk)
+    
+    if (riskScore <= 8) return scheme === 'dark' ? '#2d5f5d' : '#a7f3d0'; // Green
+    if (riskScore <= 15) return scheme === 'dark' ? '#6b5d2d' : '#fef3c7'; // Yellow
+    if (riskScore <= 20) return scheme === 'dark' ? '#6b4423' : '#fed7aa'; // Orange
     return scheme === 'dark' ? '#6b2d2d' : '#fecaca'; // Red
   };
 
@@ -269,45 +296,46 @@ export default function AdminDashboard() {
               style={styles.matrixScrollView}
             >
               <View style={styles.matrixContainer}>
-                {/* Header Row - Priority Labels */}
+                {/* Header Row - Condition Labels (Critical to Excellent) */}
                 <View style={styles.matrixRow}>
                   <View style={[
                     styles.matrixCell, 
                     styles.matrixHeaderCell,
                     { backgroundColor: Colors[scheme].tint + '15', borderColor: Colors[scheme].border }
                   ]}>
-                    <ThemedText style={styles.matrixHeaderText}>Condition ↓</ThemedText>
-                    <ThemedText style={[styles.matrixHeaderText, { fontSize: 9, marginTop: 2 }]}>Priority →</ThemedText>
+                    <ThemedText style={styles.matrixHeaderText}>Priority ↓</ThemedText>
+                    <ThemedText style={[styles.matrixHeaderText, { fontSize: 9, marginTop: 2 }]}>Condition →</ThemedText>
                   </View>
-                  {[1, 2, 3, 4, 5].map((priority) => (
+                  {[5, 4, 3, 2, 1].map((condition) => (
                     <View 
-                      key={`header-${priority}`} 
+                      key={`header-${condition}`} 
                       style={[
                         styles.matrixCell, 
                         styles.matrixHeaderCell,
                         { backgroundColor: Colors[scheme].tint + '15', borderColor: Colors[scheme].border }
                       ]}
                     >
-                      <ThemedText style={styles.matrixHeaderText}>{getPriorityLabel(priority)}</ThemedText>
+                      <ThemedText style={styles.matrixHeaderText}>{getConditionLabel(condition)}</ThemedText>
                     </View>
                   ))}
                 </View>
 
-                {/* Data Rows */}
-                {[1, 2, 3, 4, 5].map((condition) => (
-                  <View key={`row-${condition}`} style={styles.matrixRow}>
-                    {/* Condition Label */}
+                {/* Data Rows - Priority (Very High to Very Low) */}
+                {[1, 2, 3, 4, 5].map((priority) => (
+                  <View key={`row-${priority}`} style={styles.matrixRow}>
+                    {/* Priority Label */}
                     <View style={[
                       styles.matrixCell, 
                       styles.matrixHeaderCell,
                       { backgroundColor: Colors[scheme].tint + '15', borderColor: Colors[scheme].border }
                     ]}>
-                      <ThemedText style={styles.matrixHeaderText}>{getConditionLabel(condition)}</ThemedText>
+                      <ThemedText style={styles.matrixHeaderText}>{getPriorityLabel(priority)}</ThemedText>
                     </View>
                     
-                    {/* Matrix Cells */}
-                    {[1, 2, 3, 4, 5].map((priority) => {
+                    {/* Matrix Cells - Conditions from Critical (5) to Excellent (1) */}
+                    {[5, 4, 3, 2, 1].map((condition) => {
                       const count = getMatrixCount(condition, priority);
+                      const riskLabel = getRiskLabel(priority, condition);
                       return (
                         <TouchableOpacity
                           key={`cell-${condition}-${priority}`}
@@ -315,7 +343,7 @@ export default function AdminDashboard() {
                             styles.matrixCell,
                             styles.matrixDataCell,
                             { 
-                              backgroundColor: getMatrixCellColor(count),
+                              backgroundColor: getMatrixCellColor(priority, condition, count),
                               borderColor: Colors[scheme].border,
                               opacity: count === 0 ? 0.5 : 1,
                             }
@@ -324,21 +352,30 @@ export default function AdminDashboard() {
                           disabled={count === 0}
                           activeOpacity={0.7}
                         >
-                          <ThemedText style={[
-                            styles.matrixCellText,
-                            { 
-                              fontWeight: count > 0 ? '700' : '400',
-                              color: getMatrixTextColor(count)
-                            }
-                          ]}>
-                            {count}
-                          </ThemedText>
+                          <View style={{ alignItems: 'center' }}>
+                            <ThemedText style={[
+                              styles.matrixCellText,
+                              { 
+                                fontWeight: count > 0 ? '700' : '400',
+                                color: getMatrixTextColor(count),
+                                marginBottom: 0,
+                              }
+                            ]}>
+                              {count}
+                            </ThemedText>
+                            <ThemedText style={[
+                              styles.matrixCellLabel,
+                              { color: getMatrixTextColor(count) }
+                            ]}>
+                              {riskLabel}
+                            </ThemedText>
+                          </View>
                           {count > 0 && (
                             <Ionicons 
                               name="chevron-forward" 
-                              size={12} 
+                              size={10} 
                               color={Colors[scheme].text} 
-                              style={{ opacity: 0.4, marginTop: 2 }}
+                              style={{ opacity: 0.4, position: 'absolute', bottom: 4, right: 4 }}
                             />
                           )}
                         </TouchableOpacity>
@@ -353,7 +390,7 @@ export default function AdminDashboard() {
             <View style={[styles.legendContainer, { backgroundColor: Colors[scheme].background, borderTopColor: Colors[scheme].border }]}>
               <View style={styles.legendHeader}>
                 <Ionicons name="color-palette-outline" size={14} color={Colors[scheme].text} style={{ opacity: 0.7 }} />
-                <ThemedText style={styles.legendTitle}>Severity Level</ThemedText>
+                <ThemedText style={styles.legendTitle}>Risk Level (Priority × Condition)</ThemedText>
               </View>
               <View style={styles.legendItems}>
                 <View style={styles.legendItem}>
@@ -361,28 +398,28 @@ export default function AdminDashboard() {
                     styles.legendColor, 
                     { backgroundColor: scheme === 'dark' ? '#2d5f5d' : '#a7f3d0', borderColor: Colors[scheme].border }
                   ]} />
-                  <ThemedText style={styles.legendText}>Low (1-2)</ThemedText>
+                  <ThemedText style={styles.legendText}>Low (1-8)</ThemedText>
                 </View>
                 <View style={styles.legendItem}>
                   <View style={[
                     styles.legendColor, 
                     { backgroundColor: scheme === 'dark' ? '#6b5d2d' : '#fef3c7', borderColor: Colors[scheme].border }
                   ]} />
-                  <ThemedText style={styles.legendText}>Moderate (3-5)</ThemedText>
+                  <ThemedText style={styles.legendText}>Medium (9-15)</ThemedText>
                 </View>
                 <View style={styles.legendItem}>
                   <View style={[
                     styles.legendColor, 
                     { backgroundColor: scheme === 'dark' ? '#6b4423' : '#fed7aa', borderColor: Colors[scheme].border }
                   ]} />
-                  <ThemedText style={styles.legendText}>High (6-10)</ThemedText>
+                  <ThemedText style={styles.legendText}>High (16-20)</ThemedText>
                 </View>
                 <View style={styles.legendItem}>
                   <View style={[
                     styles.legendColor, 
                     { backgroundColor: scheme === 'dark' ? '#6b2d2d' : '#fecaca', borderColor: Colors[scheme].border }
                   ]} />
-                  <ThemedText style={styles.legendText}>Critical (11+)</ThemedText>
+                  <ThemedText style={styles.legendText}>Critical (21-25)</ThemedText>
                 </View>
               </View>
             </View>
@@ -463,14 +500,18 @@ export default function AdminDashboard() {
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
                       <View style={[styles.modalBadge, { 
-                        backgroundColor: getMatrixCellColor(getMatrixCount(selectedMatrixCell.condition, selectedMatrixCell.priority))
+                        backgroundColor: getMatrixCellColor(
+                          selectedMatrixCell.priority, 
+                          selectedMatrixCell.condition,
+                          getMatrixCount(selectedMatrixCell.condition, selectedMatrixCell.priority)
+                        )
                       }]}>
                         <ThemedText style={styles.modalBadgeText}>
                           {getMatrixCount(selectedMatrixCell.condition, selectedMatrixCell.priority)}
                         </ThemedText>
                       </View>
                       <ThemedText style={styles.modalTitle}>
-                        {getConditionLabel(selectedMatrixCell.condition)} × {getPriorityLabel(selectedMatrixCell.priority)}
+                        {getPriorityLabel(selectedMatrixCell.priority)} × {getConditionLabel(selectedMatrixCell.condition)}
                       </ThemedText>
                     </View>
                     <ThemedText style={styles.modalSubtitle}>
@@ -739,6 +780,12 @@ const styles = StyleSheet.create({
     fontSize: 20,
     textAlign: 'center',
     marginBottom: 2,
+  },
+  matrixCellLabel: {
+    fontSize: 8,
+    textAlign: 'center',
+    fontWeight: '500',
+    opacity: 0.7,
   },
   // Legend styles
   legendContainer: {

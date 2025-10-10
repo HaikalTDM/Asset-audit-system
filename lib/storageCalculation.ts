@@ -315,4 +315,27 @@ export class StorageCalculationService {
       throw new Error(`Failed to calculate system storage metrics: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
+
+  /**
+   * Get formatted system storage metrics with human-readable sizes (admin only)
+   */
+  static async getFormattedSystemStorageMetrics(): Promise<FormattedStorageMetrics> {
+    const systemMetrics = await this.calculateSystemStorageMetrics();
+    
+    // Get total assessment count across all users
+    const allAssessments = await FirestoreService.listAllAssessments();
+    
+    return {
+      totalDocuments: systemMetrics.totalDocuments,
+      firestoreSize: systemMetrics.totalFirestoreSize,
+      storageSize: systemMetrics.totalStorageSize,
+      totalSize: systemMetrics.totalSystemSize,
+      assessmentCount: allAssessments.length,
+      imageCount: systemMetrics.userBreakdown.reduce((sum, user) => sum + user.metrics.imageCount, 0),
+      lastCalculated: Date.now(),
+      formattedFirestoreSize: this.formatBytes(systemMetrics.totalFirestoreSize),
+      formattedStorageSize: this.formatBytes(systemMetrics.totalStorageSize),
+      formattedTotalSize: this.formatBytes(systemMetrics.totalSystemSize)
+    };
+  }
 }
