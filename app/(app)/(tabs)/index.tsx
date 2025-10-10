@@ -161,7 +161,7 @@ export default function Home() {
             {recent.length > 0 && (
               <Button
                 title="View All"
-                onPress={() => router.push('/(app)/history')}
+                onPress={() => router.push('/(app)/(tabs)/history')}
                 variant="secondary"
                 size="sm"
               />
@@ -190,11 +190,11 @@ export default function Home() {
                 {recent.map((it, index) => (
                   <View key={it.id} style={[
                     styles.recentItem,
-                    index < recent.length - 1 && styles.recentItemBorder
+                    index < recent.length - 1 && [styles.recentItemBorder, { borderBottomColor: Colors[scheme].border }]
                   ]}>
                     <Image
                       source={{ uri: it.photo_uri }}
-                      style={styles.recentImage}
+                      style={[styles.recentImage, { backgroundColor: Colors[scheme].border }]}
                       defaultSource={require('@/assets/images/logo.png')}
                     />
                     <View style={styles.recentContent}>
@@ -215,10 +215,10 @@ export default function Home() {
                 ))}
 
                 {recent.length > 0 && (
-                  <View style={styles.viewAllContainer}>
+                  <View style={[styles.viewAllContainer, { borderTopColor: Colors[scheme].border }]}>
                     <Button
                       title="View All History"
-                      onPress={() => router.push('/(app)/history')}
+                      onPress={() => router.push('/(app)/(tabs)/history')}
                       variant="secondary"
                       fullWidth
                     />
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
   },
   welcomeGreeting: {
     fontSize: ResponsiveUtils.fontSize(Typography.responsive.body),
-    opacity: 0.8,
+    opacity: 0.7,
     marginBottom: 2,
   },
   welcomeName: {
@@ -326,7 +326,6 @@ const styles = StyleSheet.create({
     fontSize: ResponsiveUtils.fontSize(Typography.responsive.subtitle),
     fontWeight: '700',
     marginBottom: Spacing.md,
-    color: Colors.light.text, // Will be overridden by ThemedText
   },
 
   // Metrics section
@@ -389,7 +388,7 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     fontSize: ResponsiveUtils.fontSize(Typography.responsive.caption),
-    opacity: 0.8,
+    opacity: 0.7,
     marginTop: 2,
   },
 
@@ -452,7 +451,7 @@ const styles = StyleSheet.create({
   },
   actionDescription: {
     fontSize: ResponsiveUtils.fontSize(Typography.responsive.body),
-    opacity: 0.8,
+    opacity: 0.7,
     lineHeight: ResponsiveUtils.fontSize(Typography.responsive.body) * 1.4,
   },
   actionButton: {
@@ -525,7 +524,7 @@ const styles = StyleSheet.create({
   },
   emptyDescription: {
     fontSize: ResponsiveUtils.fontSize(Typography.responsive.body),
-    opacity: 0.8,
+    opacity: 0.7,
     textAlign: 'center',
     marginBottom: Spacing.lg,
     lineHeight: ResponsiveUtils.fontSize(Typography.responsive.body) * 1.4,
@@ -550,7 +549,6 @@ const styles = StyleSheet.create({
   },
   recentItemBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.light.border, // Will be overridden by theme
   },
   recentImage: {
     width: ResponsiveUtils.getResponsiveValue({
@@ -567,7 +565,6 @@ const styles = StyleSheet.create({
     }),
     borderRadius: ResponsiveUtils.getBorderRadius('md'),
     marginRight: Spacing.md,
-    backgroundColor: Colors.light.border, // Placeholder background
   },
   recentContent: {
     flex: 1,
@@ -581,12 +578,11 @@ const styles = StyleSheet.create({
   },
   recentDate: {
     fontSize: ResponsiveUtils.fontSize(Typography.responsive.caption),
-    opacity: 0.8,
+    opacity: 0.7,
   },
   viewAllContainer: {
     marginTop: Spacing.md,
     paddingTop: Spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Colors.light.border, // Will be overridden by theme
   },
 });

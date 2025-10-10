@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { auth } from '../../config/firebase.config';
+import { auth, adminAuth, adminDb } from '../../config/firebase.config';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import {
   signInWithEmailAndPassword,
   signOut,
@@ -18,6 +19,7 @@ type AuthContextType = {
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   signUp: (email: string, password: string, displayName: string, role?: UserRole) => Promise<void>;
+  adminCreateUser: (email: string, password: string, displayName: string, role?: UserRole) => Promise<void>;
   refreshUserProfile: () => Promise<void>;
   hasRole: (role: UserRole) => boolean;
   isAdmin: () => boolean;
@@ -87,6 +89,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Admin-only: create a user without switching the current session
+  const adminCreateUser = async (email: string, password: string, displayName: string, role: UserRole = 'staff') => {
+    try {
+      // Create using secondary auth instance
+      const cred = await createUserWithEmailAndPassword(adminAuth, email, password);
+      await updateProfile(cred.user, { displayName });
+
+      // Write profile using adminDb (bound to adminAuth session) so rules allow create by the new user
+      const now = Date.now();
+      const profile: UserProfile = {
+        id: cred.user.uid,
+        email,
+        displayName,
+        role,
+        created_at: now,
+        updated_at: now,
+        isActive: true,
+      };
+      await setDoc(doc(adminDb, 'users', cred.user.uid), profile);
+
+      // Important: sign out the secondary auth to avoid it persisting
+      try { await signOut(adminAuth); } catch (_) {}
+    } catch (error) {
+      // Best-effort cleanup
+      try { await signOut(adminAuth); } catch (_) {}
+      throw error;
+    }
+  };
+
   const refreshUserProfile = async () => {
     if (user) {
       await loadUserProfile(user.uid);
@@ -114,6 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signIn: signInHandler,
       signOut: signOutHandler,
       signUp: signUpHandler,
+      adminCreateUser,
       refreshUserProfile,
       hasRole,
       isAdmin,

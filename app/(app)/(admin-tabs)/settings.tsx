@@ -129,7 +129,27 @@ export default function AdminSettings() {
     try {
       console.log('Calculating ALL Firebase storage metrics (admin view)');
       // Admin views ALL system storage
-      const metrics = await StorageCalculationService.getFormattedSystemStorageMetrics();
+      let metrics: FormattedStorageMetrics;
+      const svcAny = StorageCalculationService as any;
+      if (typeof svcAny?.getFormattedSystemStorageMetrics === 'function') {
+        metrics = await svcAny.getFormattedSystemStorageMetrics();
+      } else {
+        // Fallback for environments/bundles where the helper isn't available
+        const system = await StorageCalculationService.calculateSystemStorageMetrics();
+        const allAssessments = await FirestoreService.listAllAssessments();
+        metrics = {
+          totalDocuments: system.totalDocuments,
+          firestoreSize: system.totalFirestoreSize,
+          storageSize: system.totalStorageSize,
+          totalSize: system.totalSystemSize,
+          assessmentCount: allAssessments.length,
+          imageCount: system.userBreakdown.reduce((sum, u) => sum + u.metrics.imageCount, 0),
+          lastCalculated: Date.now(),
+          formattedFirestoreSize: StorageCalculationService.formatBytes(system.totalFirestoreSize),
+          formattedStorageSize: StorageCalculationService.formatBytes(system.totalStorageSize),
+          formattedTotalSize: StorageCalculationService.formatBytes(system.totalSystemSize),
+        };
+      }
       console.log('System storage metrics calculated:', metrics);
       setStorageMetrics(metrics);
     } catch (error) {

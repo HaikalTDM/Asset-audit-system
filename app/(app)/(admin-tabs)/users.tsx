@@ -9,14 +9,14 @@ import React from 'react';
 import { StyleSheet, View, FlatList, Alert, Modal, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '@/config/firebase.config';
 
 export default function UserManagement() {
   const [users, setUsers] = React.useState<UserProfile[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [createModalVisible, setCreateModalVisible] = React.useState(false);
-  const [emailModalVisible, setEmailModalVisible] = React.useState(false);
-  const [passwordModalVisible, setPasswordModalVisible] = React.useState(false);
   const [menuVisibleUserId, setMenuVisibleUserId] = React.useState<string | null>(null);
   const [selectedUser, setSelectedUser] = React.useState<UserProfile | null>(null);
   const [newUserData, setNewUserData] = React.useState({
@@ -25,14 +25,11 @@ export default function UserManagement() {
     password: '',
     role: 'staff' as UserRole,
   });
-  const [newEmail, setNewEmail] = React.useState('');
-  const [newPassword, setNewPassword] = React.useState('');
-  const [confirmPassword, setConfirmPassword] = React.useState('');
   const [userStats, setUserStats] = React.useState<{ [userId: string]: number }>({});
   const [creating, setCreating] = React.useState(false);
-  const [updating, setUpdating] = React.useState(false);
+  const [createError, setCreateError] = React.useState<string | null>(null);
   const scheme = useColorScheme() ?? 'light';
-  const { user, userProfile, signUp } = useAuth();
+  const { user, userProfile, adminCreateUser } = useAuth();
 
   const load = React.useCallback(async () => {
     if (!user || userProfile?.role !== 'admin') return;
@@ -96,28 +93,29 @@ export default function UserManagement() {
   const handleCreateUser = async () => {
     // Validate inputs
     if (!newUserData.displayName.trim()) {
-      Alert.alert('Error', 'Please enter a display name');
+      setCreateError('Please enter a display name');
       return;
     }
     if (!newUserData.email.trim()) {
-      Alert.alert('Error', 'Please enter an email');
+      setCreateError('Please enter an email');
       return;
     }
     if (!newUserData.password || newUserData.password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+      setCreateError('Password must be at least 6 characters');
       return;
     }
 
     try {
       setCreating(true);
-      await signUp(
+      setCreateError(null);
+      await adminCreateUser(
         newUserData.email.trim(),
         newUserData.password,
         newUserData.displayName.trim(),
         newUserData.role
       );
       
-      Alert.alert('Success', 'User created successfully');
+      // Optional: keep a subtle success toast or banner if desired
       
       // Reset form
       setNewUserData({
@@ -132,7 +130,18 @@ export default function UserManagement() {
       await load();
     } catch (error: any) {
       console.error('Error creating user:', error);
-      Alert.alert('Error', error?.message || 'Failed to create user');
+      const code = error?.code || '';
+      if (code === 'auth/email-already-in-use') {
+        setCreateError('This email is already in use. Try another email or update the existing user.');
+      } else if (code === 'auth/invalid-email') {
+        setCreateError('Please enter a valid email address.');
+      } else if (code === 'auth/operation-not-allowed') {
+        setCreateError('Email/password sign-in is disabled in Firebase. Enable it in the Firebase Console.');
+      } else if (code === 'auth/weak-password') {
+        setCreateError('Password is too weak. Use at least 6 characters.');
+      } else {
+        setCreateError('Failed to create user. Please try again.');
+      }
     } finally {
       setCreating(false);
     }
@@ -145,131 +154,34 @@ export default function UserManagement() {
       password: '',
       role: 'staff',
     });
+    setCreateError(null);
     setCreateModalVisible(true);
   };
 
-  const openEmailModal = (targetUser: UserProfile) => {
-    setSelectedUser(targetUser);
-    setNewEmail(targetUser.email);
-    setMenuVisibleUserId(null);
-    setEmailModalVisible(true);
-  };
-
-  const handleUpdateEmail = async () => {
-    if (!selectedUser) return;
-
-    // Validation
-    if (!newEmail.trim()) {
-      Alert.alert('Error', 'Please enter an email address');
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(newEmail.trim())) {
-      Alert.alert('Error', 'Please enter a valid email address');
-      return;
-    }
-
-    if (newEmail.trim() === selectedUser.email) {
-      Alert.alert('Info', 'Email is the same as current email');
-      return;
-    }
-
+  const handleSendPasswordResetEmail = async (targetUser: UserProfile) => {
     Alert.alert(
-      'Confirm Email Change',
-      `Change ${selectedUser.displayName}'s email from:\n\n${selectedUser.email}\n\nto:\n\n${newEmail.trim()}\n\nThis will require the user to sign in again with their new email.`,
+      'Send Password Reset Email',
+      `Send password reset email to:\n\n${targetUser.email}\n\nThe user will receive an email with instructions to reset their password.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Change Email',
-          style: 'destructive',
+          text: 'Send Email',
           onPress: async () => {
             try {
-              setUpdating(true);
-              
-              // Update in Firestore
-              await FirestoreService.updateUserEmail(selectedUser.id, newEmail.trim());
-              
+              await sendPasswordResetEmail(auth, targetUser.email);
               Alert.alert(
-                'Success',
-                'Email updated successfully.\n\nNote: If this user is currently signed in, they will need to sign in again with the new email.'
+                'Email Sent!',
+                `Password reset email has been sent to:\n\n${targetUser.email}\n\nThe user can check their inbox and follow the link to reset their password.`
               );
-              
-              setEmailModalVisible(false);
-              setNewEmail('');
-              setSelectedUser(null);
-              await load(); // Reload users list
             } catch (error: any) {
-              if (error.code === 'auth/email-already-in-use') {
-                Alert.alert('Error', 'This email is already in use by another account');
+              console.error('Error sending password reset email:', error);
+              if (error.code === 'auth/user-not-found') {
+                Alert.alert('Error', 'User not found in Firebase Authentication');
               } else if (error.code === 'auth/invalid-email') {
                 Alert.alert('Error', 'Invalid email address');
               } else {
-                Alert.alert('Error', error?.message || 'Failed to update email');
+                Alert.alert('Error', error?.message || 'Failed to send password reset email');
               }
-            } finally {
-              setUpdating(false);
-            }
-          }
-        }
-      ]
-    );
-  };
-
-  const openPasswordModal = (targetUser: UserProfile) => {
-    setSelectedUser(targetUser);
-    setNewPassword('');
-    setConfirmPassword('');
-    setMenuVisibleUserId(null);
-    setPasswordModalVisible(true);
-  };
-
-  const handleChangePassword = async () => {
-    if (!selectedUser) return;
-
-    // Validation
-    if (!newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in both password fields');
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
-      return;
-    }
-
-    Alert.alert(
-      'Confirm Password Change',
-      `Reset password for ${selectedUser.displayName}?\n\nThe user will be signed out and must sign in with their new password.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Change Password',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setUpdating(true);
-              
-              // Note: Firebase Admin SDK is needed for true password reset
-              // For now, we'll show instructions to the admin
-              Alert.alert(
-                'Password Change',
-                `To change ${selectedUser.displayName}'s password:\n\n1. Use Firebase Console > Authentication\n2. Select the user\n3. Click "Reset Password"\n4. Or send password reset email\n\nAlternatively, delete and recreate the user with a new password.`
-              );
-              
-              setPasswordModalVisible(false);
-              setNewPassword('');
-              setConfirmPassword('');
-              setSelectedUser(null);
-            } catch (error: any) {
-              Alert.alert('Error', error?.message || 'Failed to change password');
-            } finally {
-              setUpdating(false);
             }
           }
         }
@@ -379,22 +291,16 @@ export default function UserManagement() {
             backgroundColor: Colors[scheme].card,
             borderColor: Colors[scheme].border,
           }]}>
-            {/* Change Email */}
+            {/* Send Password Reset Email */}
             <TouchableOpacity
               style={styles.menuItem}
-              onPress={() => openEmailModal(item)}
+              onPress={() => {
+                setMenuVisibleUserId(null);
+                handleSendPasswordResetEmail(item);
+              }}
             >
-              <Ionicons name="mail-outline" size={20} color="#3b82f6" />
-              <ThemedText style={styles.menuItemText}>Change Email</ThemedText>
-            </TouchableOpacity>
-
-            {/* Change Password */}
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => openPasswordModal(item)}
-            >
-              <Ionicons name="key-outline" size={20} color="#8b5cf6" />
-              <ThemedText style={styles.menuItemText}>Change Password</ThemedText>
+              <Ionicons name="mail" size={20} color="#8b5cf6" />
+              <ThemedText style={styles.menuItemText}>Reset Password (Email)</ThemedText>
             </TouchableOpacity>
 
             {/* Promote / Demote */}
@@ -442,15 +348,19 @@ export default function UserManagement() {
 
             {/* Delete User */}
             <TouchableOpacity
-              style={[styles.menuItem, styles.dangerMenuItem]}
+              style={[
+                styles.menuItem,
+                styles.dangerMenuItem,
+                { backgroundColor: '#7f1d1d', borderBottomColor: '#7f1d1d' }
+              ]}
               onPress={() => {
                 setMenuVisibleUserId(null);
                 handleDeleteUser(item);
               }}
               disabled={item.id === user?.uid}
             >
-              <Ionicons name="trash-outline" size={20} color="#ef4444" />
-              <ThemedText style={[styles.menuItemText, { color: '#ef4444' }]}>
+              <Ionicons name="trash-outline" size={20} color="#ffffff" />
+              <ThemedText style={[styles.menuItemText, { color: '#ffffff', fontWeight: '700' }]}>
                 Delete User
               </ThemedText>
             </TouchableOpacity>
@@ -545,6 +455,18 @@ export default function UserManagement() {
             </View>
 
             <View style={styles.formContainer}>
+            {createError && (
+              <View style={[styles.inlineErrorBox, {
+                backgroundColor: scheme === 'dark' ? '#7f1d1d' : '#fee2e2',
+                borderColor: scheme === 'dark' ? '#ef4444' : '#ef4444',
+              }]}>
+                <Ionicons name="warning-outline" size={20} color={scheme === 'dark' ? '#fecaca' : '#b91c1c'} />
+                <View style={{ flex: 1 }}>
+                  <ThemedText style={[styles.inlineErrorTitle, { color: scheme === 'dark' ? '#fecaca' : '#b91c1c' }]}>Cannot create user</ThemedText>
+                  <ThemedText style={[styles.inlineErrorText, { color: scheme === 'dark' ? '#fecaca' : '#7f1d1d' }]}>{createError}</ThemedText>
+                </View>
+              </View>
+            )}
               <View style={styles.inputGroup}>
                 <ThemedText style={styles.inputLabel}>Display Name</ThemedText>
                 <TextInput
@@ -554,7 +476,7 @@ export default function UserManagement() {
                     borderColor: Colors[scheme].border,
                   }]}
                   value={newUserData.displayName}
-                  onChangeText={(text) => setNewUserData({ ...newUserData, displayName: text })}
+                onChangeText={(text) => { setCreateError(null); setNewUserData({ ...newUserData, displayName: text }); }}
                   placeholder="Enter full name"
                   placeholderTextColor={Colors[scheme].text + '60'}
                 />
@@ -569,7 +491,7 @@ export default function UserManagement() {
                     borderColor: Colors[scheme].border,
                   }]}
                   value={newUserData.email}
-                  onChangeText={(text) => setNewUserData({ ...newUserData, email: text })}
+                onChangeText={(text) => { setCreateError(null); setNewUserData({ ...newUserData, email: text }); }}
                   placeholder="email@example.com"
                   placeholderTextColor={Colors[scheme].text + '60'}
                   keyboardType="email-address"
@@ -586,7 +508,7 @@ export default function UserManagement() {
                     borderColor: Colors[scheme].border,
                   }]}
                   value={newUserData.password}
-                  onChangeText={(text) => setNewUserData({ ...newUserData, password: text })}
+                onChangeText={(text) => { setCreateError(null); setNewUserData({ ...newUserData, password: text }); }}
                   placeholder="Minimum 6 characters"
                   placeholderTextColor={Colors[scheme].text + '60'}
                   secureTextEntry
@@ -625,196 +547,6 @@ export default function UserManagement() {
                 title={creating ? "Creating..." : "Create User"}
                 onPress={handleCreateUser}
                 disabled={creating}
-                style={{ flex: 1 }}
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Change Email Modal */}
-      <Modal
-        visible={emailModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setEmailModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: Colors[scheme].card }]}>
-            <View style={styles.modalHeader}>
-              <View>
-                <ThemedText style={styles.modalTitle}>Change User Email</ThemedText>
-                <ThemedText style={styles.modalSubtitle}>
-                  {selectedUser?.displayName}
-                </ThemedText>
-              </View>
-              <TouchableOpacity
-                onPress={() => setEmailModalVisible(false)}
-                style={[styles.closeIconButton, { backgroundColor: Colors[scheme].background }]}
-              >
-                <Ionicons name="close" size={24} color={Colors[scheme].text} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
-              <View style={styles.inputGroup}>
-                <ThemedText style={styles.inputLabel}>Current Email</ThemedText>
-                <View style={[styles.readOnlyInput, { 
-                  backgroundColor: Colors[scheme].background,
-                  borderColor: Colors[scheme].border,
-                }]}>
-                  <ThemedText style={styles.readOnlyText}>
-                    {selectedUser?.email}
-                  </ThemedText>
-                </View>
-              </View>
-
-              <View style={styles.inputGroup}>
-                <ThemedText style={styles.inputLabel}>New Email</ThemedText>
-                <TextInput
-                  style={[styles.input, { 
-                    color: Colors[scheme].text,
-                    backgroundColor: Colors[scheme].background,
-                    borderColor: Colors[scheme].border,
-                  }]}
-                  value={newEmail}
-                  onChangeText={setNewEmail}
-                  placeholder="new.email@example.com"
-                  placeholderTextColor={Colors[scheme].text + '60'}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
-
-              <View style={[styles.warningBox, {
-                backgroundColor: '#fef3c7',
-                borderColor: '#f59e0b',
-              }]}>
-                <Ionicons name="warning" size={20} color="#f59e0b" />
-                <View style={{ flex: 1 }}>
-                  <ThemedText style={[styles.warningTitle, { color: '#92400e' }]}>
-                    Important Notice
-                  </ThemedText>
-                  <ThemedText style={[styles.warningText, { color: '#92400e' }]}>
-                    • User will need to sign in with the new email{'\n'}
-                    • Password remains the same{'\n'}
-                    • Update will be immediate{'\n'}
-                    • Cannot be undone easily
-                  </ThemedText>
-                </View>
-              </View>
-            </ScrollView>
-
-            <View style={styles.modalActions}>
-              <Button
-                title="Cancel"
-                onPress={() => setEmailModalVisible(false)}
-                variant="secondary"
-                style={{ flex: 1 }}
-              />
-              <View style={{ width: 8 }} />
-              <Button
-                title={updating ? "Updating..." : "Change Email"}
-                onPress={handleUpdateEmail}
-                disabled={updating}
-                style={{ flex: 1 }}
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Change Password Modal */}
-      <Modal
-        visible={passwordModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setPasswordModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: Colors[scheme].card }]}>
-            <View style={styles.modalHeader}>
-              <View>
-                <ThemedText style={styles.modalTitle}>Change User Password</ThemedText>
-                <ThemedText style={styles.modalSubtitle}>
-                  {selectedUser?.displayName}
-                </ThemedText>
-              </View>
-              <TouchableOpacity
-                onPress={() => setPasswordModalVisible(false)}
-                style={[styles.closeIconButton, { backgroundColor: Colors[scheme].background }]}
-              >
-                <Ionicons name="close" size={24} color={Colors[scheme].text} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
-              <View style={styles.inputGroup}>
-                <ThemedText style={styles.inputLabel}>New Password</ThemedText>
-                <TextInput
-                  style={[styles.input, { 
-                    color: Colors[scheme].text,
-                    backgroundColor: Colors[scheme].background,
-                    borderColor: Colors[scheme].border,
-                  }]}
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  placeholder="Minimum 6 characters"
-                  placeholderTextColor={Colors[scheme].text + '60'}
-                  secureTextEntry
-                  autoCapitalize="none"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <ThemedText style={styles.inputLabel}>Confirm New Password</ThemedText>
-                <TextInput
-                  style={[styles.input, { 
-                    color: Colors[scheme].text,
-                    backgroundColor: Colors[scheme].background,
-                    borderColor: Colors[scheme].border,
-                  }]}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  placeholder="Re-enter password"
-                  placeholderTextColor={Colors[scheme].text + '60'}
-                  secureTextEntry
-                  autoCapitalize="none"
-                />
-              </View>
-
-              <View style={[styles.warningBox, {
-                backgroundColor: '#fef3c7',
-                borderColor: '#f59e0b',
-              }]}>
-                <Ionicons name="information-circle" size={20} color="#f59e0b" />
-                <View style={{ flex: 1 }}>
-                  <ThemedText style={[styles.warningTitle, { color: '#92400e' }]}>
-                    Password Reset Instructions
-                  </ThemedText>
-                  <ThemedText style={[styles.warningText, { color: '#92400e' }]}>
-                    Due to Firebase security, password changes require Firebase Console access.{'\n\n'}
-                    To reset password:{'\n'}
-                    1. Open Firebase Console{'\n'}
-                    2. Go to Authentication{'\n'}
-                    3. Find the user{'\n'}
-                    4. Click "Reset Password"
-                  </ThemedText>
-                </View>
-              </View>
-            </ScrollView>
-
-            <View style={styles.modalActions}>
-              <Button
-                title="Cancel"
-                onPress={() => setPasswordModalVisible(false)}
-                variant="secondary"
-                style={{ flex: 1 }}
-              />
-              <View style={{ width: 8 }} />
-              <Button
-                title="View Instructions"
-                onPress={handleChangePassword}
                 style={{ flex: 1 }}
               />
             </View>
@@ -1016,42 +748,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
-  modalSubtitle: {
-    fontSize: 14,
-    opacity: 0.7,
-    marginTop: 4,
-  },
-  closeIconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  readOnlyInput: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    opacity: 0.7,
-  },
-  readOnlyText: {
-    fontSize: 14,
-  },
-  warningBox: {
+  inlineErrorBox: {
     flexDirection: 'row',
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 2,
-    gap: 12,
-    marginTop: 8,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 10,
+    alignItems: 'flex-start',
   },
-  warningTitle: {
+  inlineErrorTitle: {
     fontSize: 14,
     fontWeight: '700',
-    marginBottom: 6,
+    marginBottom: 4,
   },
-  warningText: {
-    fontSize: 13,
-    lineHeight: 20,
+  inlineErrorText: {
+    fontSize: 12,
+    lineHeight: 18,
   },
 });

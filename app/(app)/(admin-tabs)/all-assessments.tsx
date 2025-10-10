@@ -147,15 +147,17 @@ export default function AllAssessments() {
   );
 
   const getConditionColor = (condition: number) => {
-    if (condition <= 2) return '#ff4444';
-    if (condition <= 3) return '#ffaa00';
-    return '#44aa44';
+    // Condition: 1-2=Good (green), 3=Fair (yellow), 4-5=Bad (red)
+    if (condition <= 2) return '#44aa44'; // Green for Good/Excellent
+    if (condition <= 3) return '#ffaa00'; // Yellow for Fair
+    return '#ff4444'; // Red for Poor/Critical
   };
 
   const getPriorityColor = (priority: number) => {
-    if (priority <= 2) return '#44aa44';
-    if (priority <= 3) return '#ffaa00';
-    return '#ff4444';
+    // Priority: 1-2=Low (green), 3=Medium (yellow), 4-5=High (red)
+    if (priority <= 2) return '#44aa44'; // Green for Low priority
+    if (priority <= 3) return '#ffaa00'; // Yellow for Medium priority
+    return '#ff4444'; // Red for High priority
   };
 
   if (loading) {
@@ -450,9 +452,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   conditionBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
     borderRadius: 4,
+    flexShrink: 0,
+    minWidth: 85,
   },
   conditionText: {
     fontSize: 10,
@@ -460,9 +464,11 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   priorityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
     borderRadius: 4,
+    flexShrink: 0,
+    minWidth: 75,
   },
   priorityText: {
     fontSize: 10,

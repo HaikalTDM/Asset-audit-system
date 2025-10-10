@@ -2,9 +2,15 @@
 
 This document outlines the Firebase security rules needed to implement role-based access control for the Asset Audit application.
 
+## ⚠️ CRITICAL UPDATE REQUIRED
+
+**Admin user deletion feature requires updated rules!**
+
+If you're experiencing "Missing or insufficient permissions" when deleting users, you MUST update both Firestore and Storage rules below.
+
 ## Firestore Security Rules
 
-**IMPORTANT**: Deploy these rules immediately to fix the "Missing or insufficient permissions" error.
+**IMPORTANT**: Deploy these rules immediately to enable admin user management.
 
 Update your Firestore security rules in the Firebase Console:
 
@@ -49,8 +55,11 @@ service cloud.firestore {
       // Admins can read all user profiles
       allow read: if request.auth != null && isAdmin() && isActiveUser();
       
-      // Admins can update user roles
+      // Admins can update user roles and status
       allow update: if request.auth != null && isAdmin() && isActiveUser();
+      
+      // Admins can delete user profiles (for user management)
+      allow delete: if request.auth != null && isAdmin() && isActiveUser();
     }
     
     // Assessments collection - assessment data
@@ -106,8 +115,8 @@ service firebase.storage {
       // Users can read and write their own assessment images
       allow read, write: if request.auth != null && request.auth.uid == userId && isActiveUser();
       
-      // Admins can read all assessment images
-      allow read: if request.auth != null && isAdmin() && isActiveUser();
+      // Admins can read and delete all assessment images
+      allow read, delete: if request.auth != null && isAdmin() && isActiveUser();
     }
   }
 }
@@ -135,6 +144,7 @@ service firebase.storage {
 - Users can only read and modify their own profiles
 - Users cannot change their own role
 - Admins can read all user profiles and update user roles
+- **Admins can delete user profiles** (for user management)
 - Only active users can perform operations
 
 ### Assessment Security
@@ -142,11 +152,11 @@ service firebase.storage {
 - Users can only read their own assessments
 - Admins can read all assessments from all users
 - Users can update and delete their own assessments
-- Admins can delete any assessment
+- **Admins can delete any assessment** (including when deleting users)
 
 ### Image Storage Security
 - Users can upload and access their own assessment images
-- Admins can read all assessment images
+- **Admins can read and delete all assessment images** (for user management)
 - Images are organized by user ID for better security
 
 ### Additional Security Measures

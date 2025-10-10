@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, StyleSheet, View, ScrollView, Platform, Modal, TextInput, TouchableOpacity } from 'react-native';
+import { Alert, StyleSheet, View, ScrollView, Platform, Modal, TextInput, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { ThemedText } from '@/components/themed-text';
 import { exportZip, importZip, type ExportFilters } from '@/lib/exportImport';
@@ -19,6 +19,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StorageCalculationService, type FormattedStorageMetrics } from '@/lib/storageCalculation';
 import { DateFilterModal } from '@/components/ui/DateFilterModal';
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
+import * as ImagePicker from 'expo-image-picker';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '@/config/firebase.config';
 
 export default function Settings() {
   const scheme = useColorScheme() ?? 'light';
@@ -39,6 +42,7 @@ export default function Settings() {
   const [newPassword, setNewPassword] = React.useState('');
   const [confirmPassword, setConfirmPassword] = React.useState('');
   const [updating, setUpdating] = React.useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = React.useState(false);
 
   // Create dynamic styles based on current color scheme
   const createStyles = (scheme: 'light' | 'dark') => StyleSheet.create({
@@ -63,24 +67,25 @@ export default function Settings() {
       fontWeight: '700',
       marginBottom: 8
     },
-    rowBetween: {
+    infoRow: {
+      marginBottom: 16,
+    },
+    infoLabel: {
+      fontSize: 12,
+      fontWeight: '600',
+      opacity: 0.6,
+      marginBottom: 6,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    infoValue: {
+      fontSize: 16,
+      fontWeight: '500',
+    },
+    infoRowWithAction: {
       flexDirection: 'row',
-      alignItems: 'flex-start', // Changed from 'center' to handle multi-line text
+      alignItems: 'center',
       justifyContent: 'space-between',
-      paddingVertical: 8,
-      minHeight: 32, // Ensure consistent row height
-    },
-    labelText: {
-      flex: 0,
-      minWidth: 60,
-      marginRight: 12,
-    },
-    valueText: {
-      flex: 1,
-      opacity: 0.9,
-      textAlign: 'right',
-      // Ensure text wraps properly within container
-      flexShrink: 1,
     },
     badge: {
       paddingHorizontal: 8,
@@ -174,28 +179,66 @@ export default function Settings() {
     },
     
     // Profile edit styles
-    editButton: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
+    profileHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 20,
+      paddingBottom: 20,
+      borderBottomWidth: 1,
+      borderBottomColor: Colors[scheme].border,
+    },
+    profilePictureContainer: {
+      position: 'relative',
+      marginRight: 16,
+    },
+    profilePicture: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      backgroundColor: Colors[scheme].tint + '20',
       justifyContent: 'center',
       alignItems: 'center',
     },
-    readOnlyBadge: {
-      flexDirection: 'row',
+    profilePictureEditButton: {
+      position: 'absolute',
+      bottom: -4,
+      right: -4,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      justifyContent: 'center',
       alignItems: 'center',
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 12,
-      gap: 4,
-      borderWidth: 1,
-      borderColor: Colors[scheme].border,
+      borderWidth: 3,
+      borderColor: Colors[scheme].card,
     },
-    readOnlyText: {
-      fontSize: 10,
-      fontWeight: '600',
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
+    profileInfo: {
+      flex: 1,
+      justifyContent: 'center',
+    },
+    profileName: {
+      fontSize: 20,
+      fontWeight: '700',
+      marginBottom: 4,
+    },
+    profileEmail: {
+      fontSize: 14,
+      opacity: 0.7,
+    },
+    editButton: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    lockIcon: {
+      marginLeft: 8,
+      opacity: 0.4,
+    },
+    sectionDivider: {
+      height: 1,
+      backgroundColor: Colors[scheme].border,
+      marginVertical: 20,
     },
 
     // Modal styles
@@ -443,6 +486,55 @@ export default function Settings() {
     setShowNameModal(true);
   };
 
+  const handleUploadProfilePicture = async () => {
+    try {
+      // Request permissions
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant access to your photo library to upload a profile picture');
+        return;
+      }
+
+      // Pick image
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+      });
+
+      if (result.canceled || !result.assets[0]) return;
+
+      setUploadingPhoto(true);
+      const imageUri = result.assets[0].uri;
+
+      // Upload to Firebase Storage
+      const response = await fetch(imageUri);
+      const blob = await response.blob();
+      
+      const filename = `profile_pictures/${user?.uid}_${Date.now()}.jpg`;
+      const storageRef = ref(storage, filename);
+      
+      await uploadBytes(storageRef, blob);
+      const downloadURL = await getDownloadURL(storageRef);
+
+      // Update user profile with photo URL
+      if (user) {
+        await updateProfile(user, {
+          photoURL: downloadURL
+        });
+        
+        Alert.alert('Success', 'Profile picture updated successfully');
+      }
+    } catch (error: any) {
+      console.error('Error uploading profile picture:', error);
+      Alert.alert('Error', error?.message || 'Failed to upload profile picture');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   const handleSignOut = async () => {
     Alert.alert(
       'Sign Out',
@@ -478,92 +570,111 @@ export default function Settings() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <ThemedText type="title" style={styles.pageTitle}>Settings</ThemedText>
-
       {/* User Profile Section */}
       <Card>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-          <Ionicons name="person-circle-outline" size={20} color={Colors[scheme].text} style={{ marginRight: 8 }} />
-          <ThemedText style={styles.cardTitle}>Profile Information</ThemedText>
+        {/* Profile Header with Avatar */}
+        <View style={styles.profileHeader}>
+          <View style={styles.profilePictureContainer}>
+            {user?.photoURL ? (
+              <Image 
+                source={{ uri: user.photoURL }} 
+                style={styles.profilePicture}
+              />
+            ) : (
+              <View style={styles.profilePicture}>
+                <Ionicons 
+                  name="person" 
+                  size={36} 
+                  color={Colors[scheme].tint} 
+                  style={{ opacity: 0.5 }}
+                />
+              </View>
+            )}
+            
+            <TouchableOpacity
+              onPress={handleUploadProfilePicture}
+              style={[
+                styles.profilePictureEditButton, 
+                { backgroundColor: uploadingPhoto ? Colors[scheme].border : Colors[scheme].tint }
+              ]}
+              disabled={uploadingPhoto}
+            >
+              {uploadingPhoto ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons name="camera" size={14} color="#fff" />
+              )}
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.profileInfo}>
+            <ThemedText style={styles.profileName}>
+              {user?.displayName || 'User'}
+            </ThemedText>
+            <ThemedText style={styles.profileEmail} numberOfLines={1}>
+              {user?.email}
+            </ThemedText>
+            <View style={[styles.badge, {
+              backgroundColor: userProfile?.role === 'admin' ? '#ef4444' : '#10b981',
+              alignSelf: 'flex-start',
+              marginTop: 8,
+              flexDirection: 'row',
+              alignItems: 'center',
+            }]}>
+              <Ionicons 
+                name={userProfile?.role === 'admin' ? 'shield-checkmark' : 'person'} 
+                size={12} 
+                color="white" 
+                style={{ marginRight: 4 }} 
+              />
+              <ThemedText style={styles.badgeText}>
+                {userProfile?.role === 'admin' ? 'Admin' : 'Staff'}
+              </ThemedText>
+            </View>
+          </View>
         </View>
         
         {/* Display Name - Editable */}
-        <View style={[styles.rowBetween, { marginBottom: 12 }]}>
-          <View style={{ flex: 1 }}>
-            <ThemedText style={styles.labelText}>Display Name</ThemedText>
-            <ThemedText style={[styles.valueText, { marginTop: 4, fontSize: 16 }]}>
-              {user?.displayName || 'Not set'}
-            </ThemedText>
+        <View style={styles.infoRow}>
+          <View style={styles.infoRowWithAction}>
+            <ThemedText style={styles.infoLabel}>Display Name</ThemedText>
+            <TouchableOpacity
+              onPress={openNameModal}
+              style={[styles.editButton, { backgroundColor: Colors[scheme].tint + '20' }]}
+            >
+              <Ionicons name="pencil" size={14} color={Colors[scheme].tint} />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            onPress={openNameModal}
-            style={[styles.editButton, { backgroundColor: Colors[scheme].tint + '20' }]}
-          >
-            <Ionicons name="pencil" size={16} color={Colors[scheme].tint} />
-          </TouchableOpacity>
+          <ThemedText style={styles.infoValue}>
+            {user?.displayName || 'Not set'}
+          </ThemedText>
         </View>
 
         {/* Email - Read Only */}
-        <View style={[styles.rowBetween, { marginBottom: 12 }]}>
-          <View style={{ flex: 1 }}>
-            <ThemedText style={styles.labelText}>Email</ThemedText>
-            <ThemedText style={[styles.valueText, { marginTop: 4, fontSize: 14, opacity: 0.7 }]} numberOfLines={1}>
-              {user?.email || 'Unknown'}
-            </ThemedText>
+        <View style={styles.infoRow}>
+          <View style={styles.infoRowWithAction}>
+            <ThemedText style={styles.infoLabel}>Email Address</ThemedText>
+            <Ionicons name="lock-closed" size={14} color={Colors[scheme].text} style={styles.lockIcon} />
           </View>
-          <View style={[styles.readOnlyBadge, { backgroundColor: Colors[scheme].background }]}>
-            <Ionicons name="lock-closed" size={14} color={Colors[scheme].text} style={{ opacity: 0.5 }} />
-            <ThemedText style={[styles.readOnlyText, { opacity: 0.5 }]}>Admin Only</ThemedText>
-          </View>
+          <ThemedText style={styles.infoValue} numberOfLines={1}>
+            {user?.email || 'Unknown'}
+          </ThemedText>
         </View>
 
-        {/* Role - Read Only */}
-        <View style={[styles.rowBetween, { marginBottom: 16 }]}>
-          <View style={{ flex: 1 }}>
-            <ThemedText style={styles.labelText}>Role</ThemedText>
-            <View style={{ marginTop: 6 }}>
-              <View style={[styles.badge, {
-                backgroundColor: userProfile?.role === 'admin' ? '#ef4444' : '#10b981',
-                alignSelf: 'flex-start'
-              }]}>
-                <Ionicons 
-                  name={userProfile?.role === 'admin' ? 'shield-checkmark' : 'person'} 
-                  size={14} 
-                  color="white" 
-                  style={{ marginRight: 4 }} 
-                />
-                <ThemedText style={styles.badgeText}>
-                  {userProfile?.role === 'admin' ? 'Admin' : 'Staff'}
-                </ThemedText>
-              </View>
-            </View>
-          </View>
-          <View style={[styles.readOnlyBadge, { backgroundColor: Colors[scheme].background }]}>
-            <Ionicons name="lock-closed" size={14} color={Colors[scheme].text} style={{ opacity: 0.5 }} />
-            <ThemedText style={[styles.readOnlyText, { opacity: 0.5 }]}>Admin Only</ThemedText>
-          </View>
-        </View>
+        {/* Divider */}
+        <View style={styles.sectionDivider} />
 
         {/* Account Security */}
-        <View style={{ 
-          borderTopWidth: 1, 
-          borderTopColor: Colors[scheme].border, 
-          paddingTop: 16,
-          marginBottom: 16 
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-            <Ionicons name="shield-checkmark-outline" size={18} color={Colors[scheme].text} style={{ marginRight: 6, opacity: 0.7 }} />
-            <ThemedText style={[styles.labelText, { fontWeight: '600' }]}>Account Security</ThemedText>
-          </View>
+        <View style={{ marginBottom: 12 }}>
+          <ThemedText style={[styles.infoLabel, { marginBottom: 12 }]}>Security</ThemedText>
           <Button 
             title="Change Password" 
             onPress={() => setShowPasswordModal(true)} 
             variant="secondary"
-            style={{ marginBottom: 8 }}
+            style={{ marginBottom: 12 }}
           />
+          <Button title="Sign Out" onPress={handleSignOut} variant="danger" />
         </View>
-
-        <Button title="Sign Out" onPress={handleSignOut} variant="danger" />
       </Card>
 
       <Card>

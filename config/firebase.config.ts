@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
@@ -18,6 +18,11 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+// Initialize a secondary app for privileged admin flows (e.g., create user) to avoid auth state switching
+const adminApp = (() => {
+  const existing = getApps().find(a => a.name === 'admin');
+  return existing ?? initializeApp(firebaseConfig, 'admin');
+})();
 
 // Initialize Auth with persistence
 export const auth = Platform.OS === 'web' 
@@ -26,10 +31,25 @@ export const auth = Platform.OS === 'web'
       persistence: getReactNativePersistence(AsyncStorage)
     });
 
+// Secondary auth bound to secondary app, used only for admin actions
+export const adminAuth = (() => {
+  try {
+    return Platform.OS === 'web'
+      ? getAuth(adminApp)
+      : initializeAuth(adminApp, { persistence: getReactNativePersistence(AsyncStorage) });
+  } catch (_) {
+    // If already initialized, return existing instance
+    return getAuth(adminApp);
+  }
+})();
+
 // Initialize Firestore
 export const db = getFirestore(app);
 
 // Initialize Storage
 export const storage = getStorage(app);
+
+// Secondary Firestore bound to admin app
+export const adminDb = getFirestore(adminApp);
 
 export default app;

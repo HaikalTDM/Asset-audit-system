@@ -78,19 +78,6 @@ export class FirestoreService {
     }
   }
 
-  static async updateUserEmail(userId: string, newEmail: string) {
-    try {
-      const docRef = doc(db, 'users', userId);
-      await updateDoc(docRef, {
-        email: newEmail,
-        updated_at: Date.now(),
-      });
-    } catch (error) {
-      console.error('Error updating user email:', error);
-      throw error;
-    }
-  }
-
   static async updateUserActiveStatus(userId: string, isActive: boolean) {
     try {
       const docRef = doc(db, 'users', userId);

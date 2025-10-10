@@ -109,25 +109,25 @@ export default function AdminDashboard() {
   };
 
   const getPriorityLabel = (priority: number) => {
-    const labels = ['', 'Very High', 'High', 'Medium', 'Low', 'Very Low'];
+    const labels = ['', 'Very Low', 'Low', 'Medium', 'High', 'Very High'];
     return labels[priority] || 'Unknown';
   };
 
   /**
    * Calculate risk score based on priority and condition
-   * Lower priority number (1=Very High) + Higher condition number (5=Critical) = Higher risk
-   * Using formula: (6 - priority) * condition
+   * Higher priority number (5=Very High) + Higher condition number (5=Critical) = Higher risk
+   * Using formula: priority * condition
    * This gives us scores from 1 (Very Low priority + Excellent condition) to 25 (Very High priority + Critical condition)
    */
   const getRiskScore = (priority: number, condition: number) => {
-    return (6 - priority) * condition;
+    return priority * condition;
   };
 
   const getRiskLabel = (priority: number, condition: number) => {
     const riskScore = getRiskScore(priority, condition);
-    if (riskScore <= 8) return 'Low';
-    if (riskScore <= 15) return 'Medium';
-    if (riskScore <= 20) return 'High';
+    if (riskScore <= 6) return 'Low';
+    if (riskScore <= 12) return 'Medium';
+    if (riskScore <= 18) return 'High';
     return 'Critical';
   };
 
@@ -137,15 +137,15 @@ export default function AdminDashboard() {
     const riskScore = getRiskScore(priority, condition);
     
     // Risk score ranges from 1-25
-    // 1-8: Green (Low risk)
-    // 9-15: Yellow (Medium risk)
-    // 16-20: Orange (High risk)
-    // 21-25: Red (Critical risk)
+    // 1-6: Green (Low risk)
+    // 7-12: Yellow (Medium risk)
+    // 13-18: Orange (High risk)
+    // 19-25: Red (Critical risk)
     
-    if (riskScore <= 8) return scheme === 'dark' ? '#2d5f5d' : '#a7f3d0'; // Green
-    if (riskScore <= 15) return scheme === 'dark' ? '#6b5d2d' : '#fef3c7'; // Yellow
-    if (riskScore <= 20) return scheme === 'dark' ? '#6b4423' : '#fed7aa'; // Orange
-    return scheme === 'dark' ? '#6b2d2d' : '#fecaca'; // Red
+    if (riskScore <= 6) return scheme === 'dark' ? '#1e5f4d' : '#86efac'; // Green
+    if (riskScore <= 12) return scheme === 'dark' ? '#7c6f2d' : '#fde68a'; // Yellow
+    if (riskScore <= 18) return scheme === 'dark' ? '#7c4a28' : '#fdba74'; // Orange
+    return scheme === 'dark' ? '#7f2020' : '#fca5a5'; // Red
   };
 
   const getMatrixTextColor = (count: number) => {
@@ -316,12 +316,13 @@ export default function AdminDashboard() {
                       ]}
                     >
                       <ThemedText style={styles.matrixHeaderText}>{getConditionLabel(condition)}</ThemedText>
+                      <ThemedText style={[styles.matrixHeaderText, { fontSize: 8, opacity: 0.6, marginTop: 2 }]}>({condition})</ThemedText>
                     </View>
                   ))}
                 </View>
 
                 {/* Data Rows - Priority (Very High to Very Low) */}
-                {[1, 2, 3, 4, 5].map((priority) => (
+                {[5, 4, 3, 2, 1].map((priority) => (
                   <View key={`row-${priority}`} style={styles.matrixRow}>
                     {/* Priority Label */}
                     <View style={[
@@ -330,6 +331,7 @@ export default function AdminDashboard() {
                       { backgroundColor: Colors[scheme].tint + '15', borderColor: Colors[scheme].border }
                     ]}>
                       <ThemedText style={styles.matrixHeaderText}>{getPriorityLabel(priority)}</ThemedText>
+                      <ThemedText style={[styles.matrixHeaderText, { fontSize: 8, opacity: 0.6, marginTop: 2 }]}>({priority})</ThemedText>
                     </View>
                     
                     {/* Matrix Cells - Conditions from Critical (5) to Excellent (1) */}
@@ -352,13 +354,13 @@ export default function AdminDashboard() {
                           disabled={count === 0}
                           activeOpacity={0.7}
                         >
-                          <View style={{ alignItems: 'center' }}>
+                          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
                             <ThemedText style={[
                               styles.matrixCellText,
                               { 
                                 fontWeight: count > 0 ? '700' : '400',
                                 color: getMatrixTextColor(count),
-                                marginBottom: 0,
+                                marginBottom: 4,
                               }
                             ]}>
                               {count}
@@ -396,30 +398,30 @@ export default function AdminDashboard() {
                 <View style={styles.legendItem}>
                   <View style={[
                     styles.legendColor, 
-                    { backgroundColor: scheme === 'dark' ? '#2d5f5d' : '#a7f3d0', borderColor: Colors[scheme].border }
+                    { backgroundColor: scheme === 'dark' ? '#1e5f4d' : '#86efac', borderColor: Colors[scheme].border }
                   ]} />
-                  <ThemedText style={styles.legendText}>Low (1-8)</ThemedText>
+                  <ThemedText style={styles.legendText}>Low (1-6)</ThemedText>
                 </View>
                 <View style={styles.legendItem}>
                   <View style={[
                     styles.legendColor, 
-                    { backgroundColor: scheme === 'dark' ? '#6b5d2d' : '#fef3c7', borderColor: Colors[scheme].border }
+                    { backgroundColor: scheme === 'dark' ? '#7c6f2d' : '#fde68a', borderColor: Colors[scheme].border }
                   ]} />
-                  <ThemedText style={styles.legendText}>Medium (9-15)</ThemedText>
+                  <ThemedText style={styles.legendText}>Medium (7-12)</ThemedText>
                 </View>
                 <View style={styles.legendItem}>
                   <View style={[
                     styles.legendColor, 
-                    { backgroundColor: scheme === 'dark' ? '#6b4423' : '#fed7aa', borderColor: Colors[scheme].border }
+                    { backgroundColor: scheme === 'dark' ? '#7c4a28' : '#fdba74', borderColor: Colors[scheme].border }
                   ]} />
-                  <ThemedText style={styles.legendText}>High (16-20)</ThemedText>
+                  <ThemedText style={styles.legendText}>High (13-18)</ThemedText>
                 </View>
                 <View style={styles.legendItem}>
                   <View style={[
                     styles.legendColor, 
-                    { backgroundColor: scheme === 'dark' ? '#6b2d2d' : '#fecaca', borderColor: Colors[scheme].border }
+                    { backgroundColor: scheme === 'dark' ? '#7f2020' : '#fca5a5', borderColor: Colors[scheme].border }
                   ]} />
-                  <ThemedText style={styles.legendText}>Critical (21-25)</ThemedText>
+                  <ThemedText style={styles.legendText}>Critical (19-25)</ThemedText>
                 </View>
               </View>
             </View>
