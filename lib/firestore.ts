@@ -23,8 +23,12 @@ export type Assessment = {
   longitude: number | null;
   category: string;
   element: string;
+  floorLevel?: string; // NEW: Floor/Level information
   condition: number;
   priority: number;
+  damageCategory?: string; // NEW: Type of damage
+  rootCause?: string; // NEW: Root cause category
+  rootCauseDetails?: string; // NEW: Detailed root cause description
   photo_uri: string;
   notes: string;
 };
@@ -60,6 +64,11 @@ export class FirestoreService {
       }
       return null;
     } catch (error) {
+      const anyErr: any = error as any;
+      if (anyErr?.code === 'permission-denied') {
+        console.warn('Permission denied getting user profile');
+        return null; // Suppress during sign-out or restricted contexts
+      }
       console.error('Error getting user profile:', error);
       throw error;
     }
@@ -142,6 +151,10 @@ export class FirestoreService {
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => doc.data() as UserProfile);
     } catch (error: any) {
+      if (error?.code === 'permission-denied') {
+        console.warn('Permission denied listing users');
+        return [];
+      }
       console.error('Error listing users:', error);
 
       // Provide helpful error messages for common issues
@@ -163,59 +176,18 @@ export class FirestoreService {
     return String(n).padStart(5, '0');
   }
 
-  // Generate custom assessment ID in format: ddmmyyyy-00001
+  // Generate custom assessment ID in format: ddmmyyyy-timestamp
+  // Using timestamp ensures uniqueness without requiring Firestore queries
   private static async generateCustomAssessmentId(): Promise<string> {
-    try {
-      const now = new Date();
-      const day = this.pad2(now.getDate());
-      const month = this.pad2(now.getMonth() + 1);
-      const year = now.getFullYear();
-      const prefix = `${day}${month}${year}-`;
-
-      console.log('Generating custom ID with prefix:', prefix);
-
-      // Get all assessments and filter client-side (since we can't query by document ID)
-      const q = query(collection(db, 'assessments'));
-      const querySnapshot = await getDocs(q);
-
-      console.log('Total assessments found:', querySnapshot.size);
-
-      let maxSequence = 0;
-
-      // Filter and find the highest sequence for today's prefix
-      querySnapshot.docs.forEach(doc => {
-        const docId = doc.id;
-        if (docId.startsWith(prefix)) {
-          console.log('Found matching assessment ID:', docId);
-          const sequencePart = docId.split('-')[1];
-          if (sequencePart) {
-            const sequenceNum = parseInt(sequencePart, 10);
-            if (!isNaN(sequenceNum)) {
-              maxSequence = Math.max(maxSequence, sequenceNum);
-              console.log('Current max sequence:', maxSequence);
-            }
-          }
-        }
-      });
-
-      const nextSequence = maxSequence + 1;
-      const customId = `${prefix}${this.pad5(nextSequence)}`;
-
-      console.log('Generated custom ID:', customId);
-      return customId;
-
-    } catch (error) {
-      console.error('Error generating custom assessment ID:', error);
-      // Fallback to timestamp-based ID if custom generation fails
-      const now = new Date();
-      const day = this.pad2(now.getDate());
-      const month = this.pad2(now.getMonth() + 1);
-      const year = now.getFullYear();
-      const timestamp = Date.now();
-      const fallbackId = `${day}${month}${year}-${timestamp}`;
-      console.log('Using fallback ID:', fallbackId);
-      return fallbackId;
-    }
+    const now = new Date();
+    const day = this.pad2(now.getDate());
+    const month = this.pad2(now.getMonth() + 1);
+    const year = now.getFullYear();
+    const timestamp = Date.now();
+    
+    const customId = `${day}${month}${year}-${timestamp}`;
+    console.log('✅ Generated custom ID:', customId);
+    return customId;
   }
 
   // Assessment Management
@@ -278,18 +250,26 @@ export class FirestoreService {
 
   static async listAssessments(userId: string) {
     try {
+      console.log('🔍 Fetching assessments for user:', userId);
       const q = query(
         collection(db, 'assessments'),
         where('userId', '==', userId),
         orderBy('created_at', 'desc')
       );
       const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
+      const assessments = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Assessment[];
+      console.log('✅ Fetched', assessments.length, 'assessments from Firestore');
+      return assessments;
     } catch (error) {
-      console.error('Error listing assessments:', error);
+      const anyErr: any = error as any;
+      if (anyErr?.code === 'permission-denied') {
+        console.warn('⚠️ Permission denied listing assessments');
+        return [];
+      }
+      console.error('❌ Error listing assessments:', error);
       throw error;
     }
   }
@@ -306,6 +286,10 @@ export class FirestoreService {
         ...doc.data()
       })) as Assessment[];
     } catch (error: any) {
+      if (error?.code === 'permission-denied') {
+        console.warn('Permission denied listing all assessments');
+        return [];
+      }
       console.error('Error listing all assessments:', error);
 
       // Provide helpful error messages for common issues

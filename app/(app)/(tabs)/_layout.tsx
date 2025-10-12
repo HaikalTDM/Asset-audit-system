@@ -37,12 +37,12 @@ export default function TabsLayout() {
           }}
         />
 
-        {/* Capture - Always visible for staff and admin */}
+        {/* Audit - Always visible for staff and admin */}
         <Tabs.Screen
           name="capture"
           options={{
-            title: 'Capture',
-            tabBarIcon: ({ color }) => <Ionicons name="camera-outline" size={24} color={color} />
+            title: 'Audit',
+            tabBarIcon: ({ color }) => <Ionicons name="clipboard-outline" size={24} color={color} />
           }}
         />
 

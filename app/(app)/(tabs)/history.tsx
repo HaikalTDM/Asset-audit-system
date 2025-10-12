@@ -23,7 +23,6 @@ export default function HistoryTab() {
   const [rows, setRows] = React.useState<Assessment[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [deletingId, setDeletingId] = React.useState<string | null>(null);
   const [generatingPDF, setGeneratingPDF] = React.useState(false);
   const { user } = useAuth();
 
@@ -39,54 +38,24 @@ export default function HistoryTab() {
     if (!user) return;
 
     try {
+      console.log('📜 History page: Loading assessments for user:', user.uid);
       setLoading(true);
       setError(null);
       const assessments = await FirestoreService.listAssessments(user.uid);
+      console.log('📜 History page: Loaded', assessments.length, 'assessments');
       setRows(assessments);
     } catch (err) {
-      console.error('Error loading assessments:', err);
+      console.error('❌ History page: Error loading assessments:', err);
       setError('Failed to load assessments. Please try again.');
     } finally {
       setLoading(false);
     }
   }, [user]);
 
-  const handleDeleteAssessment = React.useCallback(async (assessment: Assessment) => {
-    if (!assessment.id) return;
-
-    Alert.alert(
-      'Delete Assessment',
-      `Are you sure you want to delete this assessment?\n\n${assessment.category} — ${assessment.element}\n\nThis action cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setDeletingId(assessment.id);
-              await FirestoreService.deleteAssessment(assessment.id);
-
-              // Remove from local state immediately for better UX
-              setRows(prevRows => prevRows.filter(row => row.id !== assessment.id));
-
-              // Optionally reload to ensure consistency
-              await load();
-            } catch (error) {
-              console.error('Error deleting assessment:', error);
-              Alert.alert('Error', 'Failed to delete assessment. Please try again.');
-            } finally {
-              setDeletingId(null);
-            }
-          }
-        }
-      ]
-    );
-  }, [load]);
-
   // Use useFocusEffect to reload data when tab is focused
   useFocusEffect(
     React.useCallback(() => {
+      console.log('📜 History page focused, reloading...');
       load();
     }, [load])
   );
@@ -390,45 +359,41 @@ export default function HistoryTab() {
                 </View>
               }
               renderItem={({ item }) => (
-            <View style={[styles.row, { backgroundColor: Colors[scheme].card }]}>
-              <Pressable
-                style={styles.itemPressable}
-                onPress={() => router.push({ pathname: '/(app)/history/[id]', params: { id: item.id } })}
-              >
-                <Image source={{ uri: item.photo_uri }} style={styles.thumb} />
-                <View style={styles.itemContent}>
-                  <ThemedText style={styles.itemTitle} numberOfLines={1} ellipsizeMode="tail">
-                    {item.category} — {item.element}
+            <Pressable
+              style={({ pressed }) => [
+                styles.assessmentCard,
+                { backgroundColor: Colors[scheme].card },
+                pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
+              ]}
+              onPress={() => router.push({ pathname: '/(app)/history/[id]', params: { id: item.id } })}
+            >
+              {/* Card Content */}
+              <Image source={{ uri: item.photo_uri }} style={styles.thumbnail} />
+              <View style={styles.cardContent}>
+                <ThemedText style={styles.cardTitle} numberOfLines={1}>
+                  {item.category} — {item.element}
+                </ThemedText>
+                <View style={styles.cardMeta}>
+                  <Ionicons name="calendar-outline" size={14} color={Colors[scheme].text} style={{ opacity: 0.6 }} />
+                  <ThemedText style={styles.cardDate}>
+                    {new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </ThemedText>
-                  <ThemedText style={styles.itemDate}>
-                    {new Date(item.created_at).toLocaleDateString()} at {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  <View style={styles.dotSeparator} />
+                  <Ionicons name="time-outline" size={14} color={Colors[scheme].text} style={{ opacity: 0.6 }} />
+                  <ThemedText style={styles.cardDate}>
+                    {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </ThemedText>
                 </View>
-              </Pressable>
-
-              <View style={styles.actionButtons}>
-                <Button
-                  title="Open"
-                  onPress={() => router.push({ pathname: '/(app)/history/[id]', params: { id: item.id } })}
-                  variant="secondary"
-                  size="sm"
-                  style={styles.openButton}
-                />
-                <Pressable
-                  style={[styles.deleteButton, { opacity: deletingId === item.id ? 0.5 : 1 }]}
-                  onPress={() => handleDeleteAssessment(item)}
-                  disabled={deletingId === item.id}
-                  accessibilityLabel="Delete assessment"
-                  accessibilityRole="button"
-                >
-                  <Ionicons
-                    name="trash-outline"
-                    size={20}
-                    color="#DC2626"
-                  />
-                </Pressable>
               </View>
-            </View>
+              
+              {/* Chevron Indicator */}
+              <Ionicons 
+                name="chevron-forward" 
+                size={20} 
+                color={Colors[scheme].text} 
+                style={{ opacity: 0.3, marginLeft: 'auto' }} 
+              />
+            </Pressable>
           )}
         />
           )}
@@ -714,55 +679,51 @@ const styles = StyleSheet.create({
   separator: {
     height: 12
   },
-  row: {
+  
+  // Assessment Card (New Clean Design)
+  assessmentCard: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  itemPressable: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+    position: 'relative',
     gap: 12,
+  },
+  thumbnail: {
+    width: 64,
+    height: 64,
+    borderRadius: 10,
+    backgroundColor: '#f3f4f6',
+  },
+  cardContent: {
     flex: 1,
+    gap: 6,
   },
-  thumb: {
-    width: 56,
-    height: 56,
-    borderRadius: 8
-  },
-  itemContent: {
-    flex: 1,
-  },
-  itemTitle: {
+  cardTitle: {
+    fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
+    letterSpacing: -0.2,
   },
-  itemDate: {
-    opacity: 0.7,
-    fontSize: 14,
-  },
-  actionButtons: {
+  cardMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
-  openButton: {
-    minWidth: 60,
+  cardDate: {
+    fontSize: 13,
+    opacity: 0.65,
   },
-  deleteButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(220, 38, 38, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(220, 38, 38, 0.2)',
+  dotSeparator: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#9ca3af',
+    opacity: 0.5,
+    marginHorizontal: 2,
   },
 });

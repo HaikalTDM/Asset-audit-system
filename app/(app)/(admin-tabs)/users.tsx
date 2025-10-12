@@ -29,19 +29,21 @@ export default function UserManagement() {
   const [creating, setCreating] = React.useState(false);
   const [createError, setCreateError] = React.useState<string | null>(null);
   const scheme = useColorScheme() ?? 'light';
-  const { user, userProfile, adminCreateUser } = useAuth();
+  const { user, userProfile, adminCreateUser, signingOut } = useAuth();
 
   const load = React.useCallback(async () => {
-    if (!user || userProfile?.role !== 'admin') return;
+    if (signingOut || !user || userProfile?.role !== 'admin') return;
 
     try {
       setLoading(true);
       setError(null);
       const allUsers = await FirestoreService.listAllUsers();
+      if (signingOut) return;
       setUsers(allUsers);
 
       // Load assessment counts for each user
       const allAssessments = await FirestoreService.listAllAssessments();
+      if (signingOut) return;
       const stats: { [userId: string]: number } = {};
       allAssessments.forEach(assessment => {
         stats[assessment.userId] = (stats[assessment.userId] || 0) + 1;
@@ -51,9 +53,9 @@ export default function UserManagement() {
       console.error('Error loading users:', err);
       setError('Failed to load users. Please try again.');
     } finally {
-      setLoading(false);
+      if (!signingOut) setLoading(false);
     }
-  }, [user, userProfile]);
+  }, [user, userProfile, signingOut]);
 
   useFocusEffect(React.useCallback(() => {
     load();

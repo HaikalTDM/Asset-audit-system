@@ -14,6 +14,7 @@ import { FirestoreService, UserProfile, UserRole } from '../firestore';
 type AuthContextType = {
   user: User | null;
   userProfile: UserProfile | null;
+  signingOut: boolean;
   loading: boolean;
   initializing: boolean;
   signIn: (email: string, password: string) => Promise<void>;
@@ -32,6 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [signingOut, setSigningOut] = useState(false);
 
   const loadUserProfile = async (userId: string) => {
     try {
@@ -66,9 +68,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOutHandler = async () => {
     try {
+      setSigningOut(true);
       await signOut(auth);
     } catch (error) {
       throw error;
+    } finally {
+      setSigningOut(false);
     }
   };
 
@@ -140,6 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={{
       user,
       userProfile,
+      signingOut,
       loading,
       initializing: loading,
       signIn: signInHandler,

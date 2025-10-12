@@ -345,6 +345,24 @@ async function generateSingleAssessmentHTML(
         <div class="info-label">Element</div>
         <div class="info-value">${assessment.element}</div>
       </div>
+      ${assessment.floorLevel ? `
+      <div class="info-item">
+        <div class="info-label">Floor/Level</div>
+        <div class="info-value">${assessment.floorLevel}</div>
+      </div>
+      ` : ''}
+      ${assessment.damageCategory ? `
+      <div class="info-item">
+        <div class="info-label">Damage Type</div>
+        <div class="info-value">${assessment.damageCategory}</div>
+      </div>
+      ` : ''}
+      ${assessment.rootCause ? `
+      <div class="info-item">
+        <div class="info-label">Root Cause</div>
+        <div class="info-value">${assessment.rootCause}</div>
+      </div>
+      ` : ''}
       <div class="info-item">
         <div class="info-label">Date</div>
         <div class="info-value">${new Date(assessment.created_at).toLocaleString()}</div>
@@ -399,6 +417,19 @@ async function generateSingleAssessmentHTML(
     <div class="section-title">Photo</div>
     <div class="photo-container">
       <img src="data:image/jpeg;base64,${photoBase64}" class="photo" alt="Assessment Photo" />
+    </div>
+  </div>
+  `
+      : ''
+  }
+
+  ${
+    assessment.rootCauseDetails
+      ? `
+  <div class="section">
+    <div class="section-title">Root Cause Details</div>
+    <div class="notes-box">
+      ${assessment.rootCauseDetails}
     </div>
   </div>
   `
@@ -635,6 +666,24 @@ async function generateAssessmentSection(
         <div class="info-label">Element</div>
         <div class="info-value">${assessment.element}</div>
       </div>
+      ${assessment.floorLevel ? `
+      <div class="info-item">
+        <div class="info-label">Floor/Level</div>
+        <div class="info-value">${assessment.floorLevel}</div>
+      </div>
+      ` : ''}
+      ${assessment.damageCategory ? `
+      <div class="info-item">
+        <div class="info-label">Damage Type</div>
+        <div class="info-value">${assessment.damageCategory}</div>
+      </div>
+      ` : ''}
+      ${assessment.rootCause ? `
+      <div class="info-item">
+        <div class="info-label">Root Cause</div>
+        <div class="info-value">${assessment.rootCause}</div>
+      </div>
+      ` : ''}
       <div class="info-item">
         <div class="info-label">Condition</div>
         <div class="info-value">

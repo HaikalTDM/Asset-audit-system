@@ -1,14 +1,16 @@
 import { router, useLocalSearchParams, Stack } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Image, ScrollView, StyleSheet, View, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
+import { Image, ScrollView, StyleSheet, View, KeyboardAvoidingView, Platform, Pressable, Modal, TouchableOpacity, FlatList, Linking } from 'react-native';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Card } from '@/components/ui/Card';
 import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { StaffOrAdmin } from '@/lib/auth/RoleGuard';
+import MapView, { Marker } from 'react-native-maps';
 
 const ELEMENTS: Record<string, string[]> = {
   Civil: ['Roof', 'External wall', 'Internal wall', 'Floor', 'Ceiling', 'Doors/Windows'],
@@ -16,15 +18,37 @@ const ELEMENTS: Record<string, string[]> = {
   Mechanical: ['HVAC', 'Pumps', 'Fire system', 'Water distribution', 'Pipe'],
 };
 
+const DAMAGE_CATEGORIES = [
+  'Structural Damage',
+  'Water Damage',
+  'Surface Defects',
+  'Functional Issues',
+  'Safety Hazard',
+  'Wear & Tear'
+];
+
+const ROOT_CAUSES = [
+  'Poor Waterproofing',
+  'Construction Defect',
+  'Material Deterioration',
+  'Poor Maintenance',
+  'Weather/Natural Wear',
+  'Improper Installation',
+  'Design Flaw',
+  'Overloading/Misuse',
+  'Age of Structure',
+  'Water Seepage'
+];
+
 function SectionHeader({ title, hint }:{ title: string; hint?: string }) {
   const scheme = useColorScheme() ?? 'light';
   return (
-    <View style={{ marginTop: 8, marginBottom: 6 }}>
+    <View style={{ marginBottom: 12 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <View style={{ width: 3, height: 14, borderRadius: 2, backgroundColor: Colors[scheme].tint, marginRight: 8 }} />
-        <ThemedText style={{ fontWeight: '700' }}>{title}</ThemedText>
+        <View style={{ width: 3, height: 16, borderRadius: 2, backgroundColor: Colors[scheme].tint, marginRight: 10 }} />
+        <ThemedText style={{ fontWeight: '700', fontSize: 16 }}>{title}</ThemedText>
       </View>
-      {hint ? <ThemedText style={{ opacity: 0.7 }}>{hint}</ThemedText> : null}
+      {hint ? <ThemedText style={{ opacity: 0.6, fontSize: 13, marginTop: 4, marginLeft: 13 }}>{hint}</ThemedText> : null}
     </View>
   );
 }
@@ -65,41 +89,210 @@ function scoreMeta(v: number) {
   return { label: 'Replace', color: '#ef4444' };
 }
 
-export default function Assess() {
-  const { photoUri, lat, lon } = useLocalSearchParams<{ photoUri?: string; lat?: string; lon?: string }>();
+// New SelectInput component for dropdown-style selections
+function SelectInput({ 
+  label, 
+  value, 
+  placeholder, 
+  icon, 
+  onPress,
+  required = false 
+}: { 
+  label: string; 
+  value: string; 
+  placeholder: string; 
+  icon: keyof typeof Ionicons.glyphMap;
+  onPress: () => void;
+  required?: boolean;
+}) {
+  const scheme = useColorScheme() ?? 'light';
+  const hasValue = value !== '';
+  
+  return (
+    <View style={{ marginBottom: 16 }}>
+      <ThemedText style={styles.inputLabel}>
+        {label}
+        {required && <ThemedText style={{ color: '#ff4444' }}> *</ThemedText>}
+      </ThemedText>
+      <TouchableOpacity
+        style={[
+          styles.selectInput,
+          {
+            backgroundColor: Colors[scheme].card,
+            borderColor: hasValue ? Colors[scheme].tint : Colors[scheme].border,
+          }
+        ]}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        <View style={styles.selectInputLeft}>
+          <Ionicons 
+            name={icon} 
+            size={20} 
+            color={hasValue ? Colors[scheme].tint : Colors[scheme].text} 
+            style={{ opacity: hasValue ? 1 : 0.5 }}
+          />
+          <ThemedText style={[styles.selectInputText, !hasValue && { opacity: 0.5 }]}>
+            {value || placeholder}
+          </ThemedText>
+        </View>
+        <Ionicons name="chevron-down" size={20} color={Colors[scheme].text} style={{ opacity: 0.5 }} />
+      </TouchableOpacity>
+    </View>
+  );
+}
 
-  const [category, setCategory] = useState('Civil');
-  const [element, setElement] = useState(ELEMENTS['Civil'][0]);
+// Selection Modal component
+function SelectionModal({
+  visible,
+  title,
+  options,
+  selectedValue,
+  onSelect,
+  onClose,
+  renderIcon
+}: {
+  visible: boolean;
+  title: string;
+  options: string[];
+  selectedValue: string;
+  onSelect: (value: string) => void;
+  onClose: () => void;
+  renderIcon?: (item: string) => keyof typeof Ionicons.glyphMap;
+}) {
+  const scheme = useColorScheme() ?? 'light';
+  
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <Pressable style={styles.modalBackdrop} onPress={onClose} />
+        <View style={[styles.modalContent, { backgroundColor: Colors[scheme].background }]}>
+          <View style={styles.modalHeader}>
+            <ThemedText style={styles.modalTitle}>{title}</ThemedText>
+            <TouchableOpacity onPress={onClose} style={styles.modalClose}>
+              <Ionicons name="close" size={24} color={Colors[scheme].text} />
+            </TouchableOpacity>
+          </View>
+          
+          <FlatList
+            data={options}
+            keyExtractor={(item) => item}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.modalOption,
+                  {
+                    backgroundColor: item === selectedValue ? Colors[scheme].tint + '15' : 'transparent',
+                    borderLeftWidth: item === selectedValue ? 3 : 0,
+                    borderLeftColor: Colors[scheme].tint,
+                  }
+                ]}
+                onPress={() => {
+                  onSelect(item);
+                  onClose();
+                }}
+                activeOpacity={0.7}
+              >
+                {renderIcon && (
+                  <Ionicons 
+                    name={renderIcon(item)} 
+                    size={22} 
+                    color={item === selectedValue ? Colors[scheme].tint : Colors[scheme].text} 
+                    style={{ marginRight: 12, opacity: item === selectedValue ? 1 : 0.6 }}
+                  />
+                )}
+                <ThemedText style={[
+                  styles.modalOptionText,
+                  item === selectedValue && { 
+                    fontWeight: '600', 
+                    color: Colors[scheme].tint 
+                  }
+                ]}>
+                  {item}
+                </ThemedText>
+                {item === selectedValue && (
+                  <Ionicons 
+                    name="checkmark-circle" 
+                    size={22} 
+                    color={Colors[scheme].tint} 
+                    style={{ marginLeft: 'auto' }}
+                  />
+                )}
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+export default function Assess() {
+  const params = useLocalSearchParams<{ 
+    photoUri?: string; 
+    lat?: string; 
+    lon?: string; 
+    category?: string; 
+    element?: string;
+    floorLevel?: string;
+  }>();
+
+  const [category, setCategory] = useState(params.category || 'Civil');
+  const [element, setElement] = useState(params.element || ELEMENTS[params.category || 'Civil'][0]);
+  const [floorLevel, setFloorLevel] = useState(params.floorLevel || '');
   const [condition, setCondition] = useState<number>(3);
   const [priority, setPriority] = useState<number>(3);
+  const [damageCategory, setDamageCategory] = useState('');
+  const [rootCause, setRootCause] = useState('');
+  const [rootCauseDetails, setRootCauseDetails] = useState('');
   const [notes, setNotes] = useState('');
+  
+  // Modal visibility states
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showElementModal, setShowElementModal] = useState(false);
+  const [showDamageModal, setShowDamageModal] = useState(false);
+  const [showRootCauseModal, setShowRootCauseModal] = useState(false);
 
   useEffect(() => { setElement(ELEMENTS[category][0]); }, [category]);
 
   const prevPhotoRef = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (prevPhotoRef.current !== photoUri) {
-      setCategory('Civil'); setElement(ELEMENTS['Civil'][0]); setCondition(3); setPriority(3); setNotes('');
-      prevPhotoRef.current = photoUri as string | undefined;
+    if (prevPhotoRef.current !== params.photoUri) {
+      setCategory(params.category || 'Civil'); 
+      setElement(params.element || ELEMENTS[params.category || 'Civil'][0]); 
+      setFloorLevel(params.floorLevel || '');
+      setCondition(3); 
+      setPriority(3); 
+      setDamageCategory('');
+      setRootCause('');
+      setRootCauseDetails('');
+      setNotes('');
+      prevPhotoRef.current = params.photoUri as string | undefined;
     }
-  }, [photoUri]);
+  }, [params.photoUri, params.category, params.element, params.floorLevel]);
 
   const continueToReview = () => {
-    // Debug logging (disabled for cleaner output)
-    // console.log('Navigating to review with params:', {
-    //   photoUri: photoUri ?? '',
-    //   lat: lat ?? '',
-    //   lon: lon ?? '',
-    //   category,
-    //   element,
-    //   condition: String(condition),
-    //   priority: String(priority),
-    //   notes
-    // });
-
     router.push({
       pathname: '/(app)/review',
-      params: { photoUri: photoUri ?? '', lat: lat ?? '', lon: lon ?? '', category, element, condition: String(condition), priority: String(priority), notes },
+      params: { 
+        photoUri: params.photoUri ?? '', 
+        lat: params.lat ?? '', 
+        lon: params.lon ?? '', 
+        category, 
+        element,
+        floorLevel: floorLevel || '',
+        condition: String(condition), 
+        priority: String(priority),
+        damageCategory: damageCategory || '',
+        rootCause: rootCause || '',
+        rootCauseDetails: rootCauseDetails || '',
+        notes 
+      },
     });
   };
 
@@ -122,83 +315,168 @@ export default function Assess() {
             automaticallyAdjustKeyboardInsets
             keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           >
-            {photoUri ? <Image source={{ uri: photoUri }} style={styles.photo} /> : null}
-            {(lat && lon) ? (<ThemedText style={{ marginBottom: 6 }}>GPS: {Number(lat).toFixed(6)}, {Number(lon).toFixed(6)}</ThemedText>) : null}
+            {/* Photo Preview */}
+            {params.photoUri ? <Image source={{ uri: params.photoUri }} style={styles.photo} /> : null}
+            
+            {/* Location Map */}
+            {(params.lat && params.lon) ? (
+              <Card variant="elevated" style={styles.card}>
+                <View style={styles.locationHeader}>
+                  <View style={styles.locationTitleRow}>
+                    <Ionicons name="location" size={20} color={Colors[scheme].tint} />
+                    <ThemedText style={styles.locationTitle}>GPS Location</ThemedText>
+                  </View>
+                  <TouchableOpacity 
+                    style={[styles.openMapButton, { backgroundColor: Colors[scheme].tint }]}
+                    onPress={() => {
+                      const url = Platform.select({
+                        ios: `maps:0,0?q=${params.lat},${params.lon}`,
+                        android: `geo:0,0?q=${params.lat},${params.lon}`,
+                      });
+                      if (url) Linking.openURL(url);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="open-outline" size={16} color="#fff" />
+                    <ThemedText style={{ color: '#fff', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>Open</ThemedText>
+                  </TouchableOpacity>
+                </View>
+                
+                <View style={styles.mapContainer}>
+                  <MapView
+                    style={styles.map}
+                    initialRegion={{
+                      latitude: Number(params.lat),
+                      longitude: Number(params.lon),
+                      latitudeDelta: 0.005,
+                      longitudeDelta: 0.005,
+                    }}
+                    scrollEnabled={false}
+                    zoomEnabled={false}
+                    pitchEnabled={false}
+                    rotateEnabled={false}
+                  >
+                    <Marker
+                      coordinate={{
+                        latitude: Number(params.lat),
+                        longitude: Number(params.lon),
+                      }}
+                      title="Assessment Location"
+                    />
+                  </MapView>
+                </View>
+                
+                <View style={[styles.coordinatesCard, { backgroundColor: Colors[scheme].tint + '15' }]}>
+                  <View style={styles.coordinateRow}>
+                    <ThemedText style={styles.coordinateLabel}>Latitude:</ThemedText>
+                    <ThemedText style={[styles.coordinateValue, { color: Colors[scheme].tint }]}>
+                      {Number(params.lat).toFixed(6)}
+                    </ThemedText>
+                  </View>
+                  <View style={styles.coordinateRow}>
+                    <ThemedText style={styles.coordinateLabel}>Longitude:</ThemedText>
+                    <ThemedText style={[styles.coordinateValue, { color: Colors[scheme].tint }]}>
+                      {Number(params.lon).toFixed(6)}
+                    </ThemedText>
+                  </View>
+                </View>
+              </Card>
+            ) : null}
 
-            <SectionHeader title="Assessment Category" />
-            <View style={styles.rowWrap}>
-              {Object.keys(ELEMENTS).map((name) => (
-                <OptionCard
-                  key={name}
-                  label={name}
-                  icon={name === 'Civil' ? 'construct-outline' : name === 'Electrical' ? 'flash-outline' : 'cog-outline'}
-                  selected={category === name}
-                  onPress={() => setCategory(name)}
-                />
-              ))}
-            </View>
+            {/* Asset Details */}
+            <Card variant="elevated" style={styles.card}>
+              <SelectInput
+                label="Category"
+                value={category}
+                placeholder="Select category"
+                icon="apps-outline"
+                onPress={() => setShowCategoryModal(true)}
+                required
+              />
+              
+              <SelectInput
+                label="Building Element"
+                value={element}
+                placeholder="Select element"
+                icon="cube-outline"
+                onPress={() => setShowElementModal(true)}
+                required
+              />
+            </Card>
 
-            <SectionHeader title="Building Element" />
-            <View style={styles.rowWrap}>
-              {ELEMENTS[category].map((el) => (
-                <OptionCard
-                  key={el}
-                  label={el}
-                  icon={
-                    el.includes('Roof') ? 'home-outline' :
-                    el.includes('External') ? 'leaf-outline' :
-                    el.includes('Internal') ? 'cube-outline' :
-                    el.includes('Floor') ? 'grid-outline' :
-                    el.includes('Ceiling') ? 'layers-outline' :
-                    el.includes('Lighting') ? 'bulb-outline' :
-                    el.includes('Sockets') ? 'flash-outline' :
-                    el.includes('Wiring') ? 'git-branch-outline' :
-                    el.includes('DB/Panel') ? 'server-outline' :
-                    el.includes('Earthing') ? 'earth-outline' :
-                    el.includes('HVAC') ? 'thermometer-outline' :
-                    el.includes('Pumps') ? 'cog-outline' :
-                    el.includes('Water distribution') ? 'water-outline' :
-                    el.includes('Fire System') ? 'flame-outline' :
-                    el.includes('Pipe') ? 'git-merge-outline' :
-                    'home-outline'
-                  }
-                  selected={element === el}
-                  onPress={() => setElement(el)}
-                />
-              ))}
-            </View>
-
-            <SectionHeader title="Condition" hint="1=Very Good, 5=Very Poor" />
-            <View style={styles.scoreRow}>
-              {[1,2,3,4,5].map((v) => (
-                <ScoreTile key={`c${v}`} value={v} selected={condition === v} color={scoreMeta(v).color} onPress={() => setCondition(v)} />
-              ))}
-            </View>
-            <View style={{ alignItems: 'center', marginBottom: 8 }}>
-              <View style={[styles.badge, { backgroundColor: scoreMeta(condition).color }]}>
-                <Ionicons name={condition <= 3 ? 'thermometer-outline' : 'alert-circle-outline'} color="#fff" size={14} />
-                <ThemedText style={{ color: '#fff', fontWeight: '700', marginLeft: 6 }}>{scoreMeta(condition).label}</ThemedText>
+            {/* Condition & Priority */}
+            <Card variant="elevated" style={styles.card}>
+              <SectionHeader title="Condition Rating" hint="1=Excellent, 5=Critical" />
+              <View style={styles.scoreRow}>
+                {[1,2,3,4,5].map((v) => (
+                  <ScoreTile key={`c${v}`} value={v} selected={condition === v} color={scoreMeta(v).color} onPress={() => setCondition(v)} />
+                ))}
               </View>
-            </View>
-
-            <SectionHeader title="Priority" hint="1=Normal, 5=Replacement" />
-            <View style={styles.scoreRow}>
-              {[1,2,3,4,5].map((v) => (
-                <ScoreTile key={`p${v}`} value={v} selected={priority === v} color={scoreMeta(v).color} onPress={() => setPriority(v)} />
-              ))}
-            </View>
-            <View style={{ alignItems: 'center', marginBottom: 12 }}>
-              <View style={[styles.badge, { backgroundColor: scoreMeta(priority).color }]}>
-                <Ionicons name={priority >=4 ? 'warning-outline' : 'alert-circle-outline'} color="#fff" size={14} />
-                <ThemedText style={{ color: '#fff', fontWeight: '700', marginLeft: 6 }}>{scoreMeta(priority).label}</ThemedText>
+              <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                <View style={[styles.badge, { backgroundColor: scoreMeta(condition).color }]}>
+                  <Ionicons name={condition <= 3 ? 'checkmark-circle' : 'alert-circle-outline'} color="#fff" size={14} />
+                  <ThemedText style={{ color: '#fff', fontWeight: '700', marginLeft: 6 }}>{scoreMeta(condition).label}</ThemedText>
+                </View>
               </View>
-            </View>
 
-            <SectionHeader title="Notes & Observations" />
-            <View onLayout={(e) => setNotesY(e.nativeEvent.layout.y)}>
-              <Input label="Notes" value={notes} onChangeText={setNotes} placeholder="Describe the defect or observation..." multiline
-                     onFocus={() => scrollRef.current?.scrollTo({ y: Math.max(0, notesY - 8), animated: true })} />
-            </View>
+              <SectionHeader title="Priority Level" hint="1=Very Low, 5=Very High" />
+              <View style={styles.scoreRow}>
+                {[1,2,3,4,5].map((v) => (
+                  <ScoreTile key={`p${v}`} value={v} selected={priority === v} color={scoreMeta(v).color} onPress={() => setPriority(v)} />
+                ))}
+              </View>
+              <View style={{ alignItems: 'center' }}>
+                <View style={[styles.badge, { backgroundColor: scoreMeta(priority).color }]}>
+                  <Ionicons name={priority >=4 ? 'warning' : 'alert-circle-outline'} color="#fff" size={14} />
+                  <ThemedText style={{ color: '#fff', fontWeight: '700', marginLeft: 6 }}>{scoreMeta(priority).label}</ThemedText>
+                </View>
+              </View>
+            </Card>
+
+            {/* Damage Analysis */}
+            <Card variant="elevated" style={styles.card}>
+              <SelectInput
+                label="Damage Type"
+                value={damageCategory}
+                placeholder="Select damage type"
+                icon="alert-circle-outline"
+                onPress={() => setShowDamageModal(true)}
+                required
+              />
+              
+              <SelectInput
+                label="Root Cause"
+                value={rootCause}
+                placeholder="Select root cause (optional)"
+                icon="search-outline"
+                onPress={() => setShowRootCauseModal(true)}
+              />
+
+              {rootCause && (
+                <Input 
+                  label="Cause Details"
+                  value={rootCauseDetails} 
+                  onChangeText={setRootCauseDetails} 
+                  placeholder="E.g., Waterproofing membrane failure, cracks visible..." 
+                  multiline
+                />
+              )}
+            </Card>
+
+            {/* Notes */}
+            <Card variant="elevated" style={styles.card}>
+              <SectionHeader title="Notes & Observations" />
+              <View onLayout={(e) => setNotesY(e.nativeEvent.layout.y)}>
+                <Input 
+                  value={notes} 
+                  onChangeText={setNotes} 
+                  placeholder="Additional observations, recommendations, or comments..." 
+                  multiline
+                  onFocus={() => scrollRef.current?.scrollTo({ y: Math.max(0, notesY - 8), animated: true })} 
+                />
+              </View>
+            </Card>
+            
             <View style={{ height: 88 }} />
           </ScrollView>
 
@@ -209,20 +487,245 @@ export default function Assess() {
             </Pressable>
           </View>
         </View>
+
+        {/* Selection Modals */}
+        <SelectionModal
+          visible={showCategoryModal}
+          title="Select Category"
+          options={Object.keys(ELEMENTS)}
+          selectedValue={category}
+          onSelect={setCategory}
+          onClose={() => setShowCategoryModal(false)}
+          renderIcon={(item) => 
+            item === 'Civil' ? 'construct-outline' : 
+            item === 'Electrical' ? 'flash-outline' : 
+            'cog-outline'
+          }
+        />
+
+        <SelectionModal
+          visible={showElementModal}
+          title="Select Building Element"
+          options={ELEMENTS[category]}
+          selectedValue={element}
+          onSelect={setElement}
+          onClose={() => setShowElementModal(false)}
+          renderIcon={(item) => 
+            item.includes('Roof') ? 'home-outline' :
+            item.includes('External') ? 'leaf-outline' :
+            item.includes('Internal') ? 'cube-outline' :
+            item.includes('Floor') ? 'grid-outline' :
+            item.includes('Ceiling') ? 'layers-outline' :
+            item.includes('Lighting') ? 'bulb-outline' :
+            item.includes('Sockets') ? 'flash-outline' :
+            item.includes('Wiring') ? 'git-branch-outline' :
+            item.includes('DB') || item.includes('Panel') ? 'server-outline' :
+            item.includes('Earthing') ? 'earth-outline' :
+            item.includes('HVAC') ? 'thermometer-outline' :
+            item.includes('Pumps') ? 'cog-outline' :
+            item.includes('Water') ? 'water-outline' :
+            item.includes('Fire') ? 'flame-outline' :
+            item.includes('Pipe') ? 'git-merge-outline' :
+            'cube-outline'
+          }
+        />
+
+        <SelectionModal
+          visible={showDamageModal}
+          title="Select Damage Type"
+          options={DAMAGE_CATEGORIES}
+          selectedValue={damageCategory}
+          onSelect={setDamageCategory}
+          onClose={() => setShowDamageModal(false)}
+          renderIcon={(item) => 
+            item === 'Structural Damage' ? 'home-outline' :
+            item === 'Water Damage' ? 'water-outline' :
+            item === 'Surface Defects' ? 'brush-outline' :
+            item === 'Functional Issues' ? 'construct-outline' :
+            item === 'Safety Hazard' ? 'warning-outline' : 
+            'alert-circle-outline'
+          }
+        />
+
+        <SelectionModal
+          visible={showRootCauseModal}
+          title="Select Root Cause"
+          options={ROOT_CAUSES}
+          selectedValue={rootCause}
+          onSelect={setRootCause}
+          onClose={() => setShowRootCauseModal(false)}
+          renderIcon={(item) => 
+            item === 'Poor Waterproofing' ? 'water-outline' :
+            item === 'Construction Defect' ? 'hammer-outline' :
+            item === 'Material Deterioration' ? 'timer-outline' :
+            item === 'Poor Maintenance' ? 'build-outline' :
+            item === 'Weather/Natural Wear' ? 'rainy-outline' :
+            item === 'Improper Installation' ? 'warning-outline' :
+            item === 'Design Flaw' ? 'help-circle-outline' :
+            item === 'Overloading/Misuse' ? 'alert-circle-outline' :
+            item === 'Age of Structure' ? 'time-outline' : 
+            'help-circle-outline'
+          }
+        />
       </KeyboardAvoidingView>
     </>
     </StaffOrAdmin>
   );
 }
 const styles = StyleSheet.create({
-  container: { padding: 16, gap: 10, paddingBottom: 16 },
-  photo: { width: '100%', height: 240, resizeMode: 'cover', borderRadius: 8, marginBottom: 8 },
-  rowWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  container: { padding: 16, paddingBottom: 16 },
+  photo: { width: '100%', height: 220, resizeMode: 'cover', borderRadius: 12, marginBottom: 12 },
+  card: {
+    marginBottom: 16,
+  },
+  
+  // Location Map styles
+  locationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  locationTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  locationTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  openMapButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+  },
+  mapContainer: {
+    height: 180,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  map: {
+    flex: 1,
+  },
+  coordinatesCard: {
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  coordinateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  coordinateLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    opacity: 0.7,
+  },
+  coordinateValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  subLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 10,
+    marginTop: 8,
+    opacity: 0.8,
+  },
+  rowWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
   optCard: { paddingVertical: 12, paddingHorizontal: 14, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, marginRight: 10, marginBottom: 10, minWidth: 120 },
   optIcon: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
-  scoreRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  scoreRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
   scoreTile: { width: '18%', aspectRatio: 1, borderRadius: 16, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
-  badge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
+  badge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999 },
   fabBar: { position: 'absolute', left: 16, right: 16, bottom: 20, borderRadius: 24, padding: 8, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
   fabButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
+  
+  // SelectInput styles
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+    opacity: 0.9,
+  },
+  selectInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderRadius: 10,
+    borderWidth: 1.5,
+  },
+  selectInputLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 10,
+  },
+  selectInputText: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '70%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  modalClose: {
+    padding: 4,
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e5e7eb',
+  },
+  modalOptionText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
 });

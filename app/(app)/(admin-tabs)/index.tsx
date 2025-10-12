@@ -24,7 +24,7 @@ export default function AdminDashboard() {
   const [selectedMatrixCell, setSelectedMatrixCell] = React.useState<{ condition: number; priority: number } | null>(null);
   const [matrixModalVisible, setMatrixModalVisible] = React.useState(false);
   const scheme = useColorScheme() ?? 'light';
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, signingOut } = useAuth();
 
   const load = React.useCallback(async () => {
     // Debug logging (disabled for cleaner output)
@@ -33,17 +33,17 @@ export default function AdminDashboard() {
     // console.log('Admin Dashboard - User Profile:', userProfile);
     // console.log('Admin Dashboard - User Role:', userProfile?.role);
 
-    if (!user) {
+    if (signingOut || !user) {
       // console.log('Admin Dashboard - No user, skipping load');
       return;
     }
 
-    if (!userProfile) {
+    if (signingOut || !userProfile) {
       // console.log('Admin Dashboard - No user profile yet, skipping load');
       return;
     }
 
-    if (userProfile.role !== 'admin') {
+    if (signingOut || userProfile.role !== 'admin') {
       // console.log('Admin Dashboard - User is not admin, role:', userProfile.role);
       return;
     }
@@ -52,6 +52,7 @@ export default function AdminDashboard() {
       // console.log('Admin Dashboard - Loading all assessments...');
       // Load all assessments
       const assessments = await FirestoreService.listAllAssessments();
+      if (signingOut) return;
       // console.log('Admin Dashboard - Loaded assessments:', assessments.length);
       setAllAssessments(assessments); // Store all assessments for matrix
       setTotalAssessments(assessments.length);
@@ -64,19 +65,22 @@ export default function AdminDashboard() {
       const todayCount = assessments.filter((assessment: Assessment) => 
         assessment.created_at >= start.getTime() && assessment.created_at <= end.getTime()
       ).length;
+      if (signingOut) return;
       setTodayAssessments(todayCount);
       
       // Get recent assessments
+      if (signingOut) return;
       setRecentAssessments(assessments.slice(0, 5));
       
       // Load all users
       const allUsers = await FirestoreService.listAllUsers();
+      if (signingOut) return;
       setTotalUsers(allUsers.length);
       setActiveUsers(allUsers.filter(user => user.isActive).length);
     } catch (error) {
       console.error('Error loading admin dashboard data:', error);
     }
-  }, [user, userProfile]);
+  }, [user, userProfile, signingOut]);
 
   useFocusEffect(React.useCallback(() => {
     load();

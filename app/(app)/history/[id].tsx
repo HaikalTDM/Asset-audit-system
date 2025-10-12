@@ -1,6 +1,6 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Image, ScrollView, StyleSheet, View, Pressable, Platform, Alert, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { Image, ScrollView, StyleSheet, View, Pressable, Platform, Alert, ActivityIndicator, TouchableOpacity, Modal, TextInput } from 'react-native';
 import * as Linking from 'expo-linking';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/Button';
@@ -50,6 +50,11 @@ export default function AssessmentDetailsScreen() {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [editedNotes, setEditedNotes] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
   const scheme = useColorScheme() ?? 'light';
   const { user } = useAuth();
 
@@ -85,6 +90,49 @@ export default function AssessmentDetailsScreen() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!id || !item) return;
+
+    setDeleting(true);
+    setDeleteModalVisible(false);
+
+    try {
+      await FirestoreService.deleteAssessment(id);
+      router.back();
+    } catch (error) {
+      console.error('Error deleting assessment:', error);
+      Alert.alert('Error', 'Failed to delete assessment. Please try again.');
+      setDeleting(false);
+    }
+  };
+
+  const handleEditNotes = () => {
+    setEditedNotes(item?.notes || '');
+    setIsEditingNotes(true);
+  };
+
+  const handleSaveNotes = async () => {
+    if (!id || !item) return;
+
+    setSavingNotes(true);
+    try {
+      await FirestoreService.updateAssessment(id, { notes: editedNotes });
+      setItem({ ...item, notes: editedNotes });
+      setIsEditingNotes(false);
+      Alert.alert('Success', 'Notes updated successfully');
+    } catch (error) {
+      console.error('Error updating notes:', error);
+      Alert.alert('Error', 'Failed to update notes. Please try again.');
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingNotes(false);
+    setEditedNotes('');
+  };
+
   if (!item) {
     return (
       <>
@@ -116,18 +164,18 @@ export default function AssessmentDetailsScreen() {
               <Ionicons name="image-outline" size={48} color={Colors[scheme].text} style={{ opacity: 0.3, marginBottom: 8 }} />
               <ThemedText style={{ textAlign: 'center', opacity: 0.6 }}>
                 Image not available
-              </ThemedText>
+                </ThemedText>
               <ThemedText style={{ fontSize: 12, textAlign: 'center', opacity: 0.5, marginTop: 4 }}>
                 This may be an older assessment
               </ThemedText>
             </View>
           ) : (
             <>
-              <Image
-                source={{ uri: item.photo_uri }}
-                style={styles.photo}
-                onError={() => setImageError(true)}
-              />
+            <Image
+              source={{ uri: item.photo_uri }}
+              style={styles.photo}
+              onError={() => setImageError(true)}
+            />
               <View style={styles.photoOverlay}>
                 <View style={styles.photoHint}>
                   <Ionicons name="expand-outline" size={16} color="#fff" />
@@ -180,6 +228,57 @@ export default function AssessmentDetailsScreen() {
               <ThemedText style={styles.detailValue}>{item.element}</ThemedText>
             </View>
           </View>
+
+          {item.floorLevel && (
+            <View style={styles.detailRow}>
+              <View style={styles.detailIcon}>
+                <Ionicons name="layers-outline" size={18} color={Colors[scheme].tint} />
+              </View>
+              <View style={styles.detailContent}>
+                <ThemedText style={styles.detailLabel}>Floor/Level</ThemedText>
+                <ThemedText style={styles.detailValue}>{item.floorLevel}</ThemedText>
+              </View>
+            </View>
+          )}
+
+          {item.damageCategory && (
+            <>
+              <View style={[styles.divider, { backgroundColor: Colors[scheme].border }]} />
+              <View style={styles.detailRow}>
+                <View style={styles.detailIcon}>
+                  <Ionicons name="warning-outline" size={18} color={Colors[scheme].tint} />
+                </View>
+                <View style={styles.detailContent}>
+                  <ThemedText style={styles.detailLabel}>Damage Type</ThemedText>
+                  <ThemedText style={styles.detailValue}>{item.damageCategory}</ThemedText>
+                </View>
+              </View>
+            </>
+          )}
+
+          {item.rootCause && (
+            <View style={styles.detailRow}>
+              <View style={styles.detailIcon}>
+                <Ionicons name="search-outline" size={18} color={Colors[scheme].tint} />
+              </View>
+              <View style={styles.detailContent}>
+                <ThemedText style={styles.detailLabel}>Root Cause</ThemedText>
+                <ThemedText style={styles.detailValue}>{item.rootCause}</ThemedText>
+              </View>
+            </View>
+          )}
+
+          {item.rootCauseDetails && (
+            <View style={styles.detailRow}>
+              <View style={styles.detailIcon}>
+                <Ionicons name="list-outline" size={18} color={Colors[scheme].tint} />
+              </View>
+              <View style={styles.detailContent}>
+                <ThemedText style={styles.detailLabel}>Cause Details</ThemedText>
+                <ThemedText style={styles.detailValue}>{item.rootCauseDetails}</ThemedText>
+              </View>
+            </View>
+          )}
 
           <View style={[styles.divider, { backgroundColor: Colors[scheme].border }]} />
 
@@ -271,15 +370,64 @@ export default function AssessmentDetailsScreen() {
         </Card>
 
         {/* Notes Card */}
-        {item.notes && (
-          <Card variant="elevated">
-            <View style={styles.cardHeader}>
-              <Ionicons name="document" size={20} color={Colors[scheme].tint} />
-              <ThemedText style={styles.cardTitle}>Notes</ThemedText>
-            </View>
-            <ThemedText style={styles.notesText}>{item.notes}</ThemedText>
-          </Card>
-        )}
+        <Card variant="elevated">
+          <View style={styles.cardHeader}>
+            <Ionicons name="document" size={20} color={Colors[scheme].tint} />
+            <ThemedText style={styles.cardTitle}>Notes</ThemedText>
+            {!isEditingNotes && (
+              <TouchableOpacity 
+                onPress={handleEditNotes}
+                style={styles.editButton}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="create-outline" size={20} color={Colors[scheme].tint} />
+              </TouchableOpacity>
+            )}
+          </View>
+          
+          {isEditingNotes ? (
+            <>
+              <TextInput
+                style={[
+                  styles.notesInput,
+                  {
+                    backgroundColor: Colors[scheme].background,
+                    borderColor: Colors[scheme].border,
+                    color: Colors[scheme].text,
+                  }
+                ]}
+                value={editedNotes}
+                onChangeText={setEditedNotes}
+                placeholder="Add notes about this assessment..."
+                placeholderTextColor={Colors[scheme].text + '60'}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+              <View style={styles.editButtonsRow}>
+                <Button
+                  title="Cancel"
+                  onPress={handleCancelEdit}
+                  variant="secondary"
+                  size="sm"
+                  style={{ flex: 1 }}
+                />
+                <Button
+                  title={savingNotes ? "Saving..." : "Save"}
+                  onPress={handleSaveNotes}
+                  variant="primary"
+                  size="sm"
+                  disabled={savingNotes}
+                  style={{ flex: 1 }}
+                />
+              </View>
+            </>
+          ) : (
+            <ThemedText style={styles.notesText}>
+              {item.notes || 'No notes added yet. Tap the edit icon to add notes.'}
+            </ThemedText>
+          )}
+        </Card>
 
         {/* Action Buttons */}
         <View style={styles.actionsContainer}>
@@ -300,10 +448,92 @@ export default function AssessmentDetailsScreen() {
           />
         </View>
 
+        {/* Delete Button */}
+        <Pressable
+          style={({ pressed }) => [
+            styles.deleteButton,
+            { 
+              backgroundColor: pressed ? '#DC2626' : 'rgba(220, 38, 38, 0.1)',
+              borderColor: pressed ? '#DC2626' : 'rgba(220, 38, 38, 0.3)',
+            }
+          ]}
+          onPress={() => setDeleteModalVisible(true)}
+          disabled={deleting}
+        >
+          <Ionicons 
+            name="trash-outline" 
+            size={20} 
+            color="#DC2626"
+          />
+          <ThemedText style={styles.deleteButtonText}>
+            {deleting ? "Deleting..." : "Delete Assessment"}
+          </ThemedText>
+        </Pressable>
+
         {!imageError && (
           <ZoomImageModal uri={item.photo_uri} visible={viewerOpen} onClose={() => setViewerOpen(false)} />
         )}
       </ScrollView>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        visible={deleteModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setDeleteModalVisible(false)}
+      >
+        <View style={styles.deleteModalOverlay}>
+          <View style={[styles.deleteModalContent, { backgroundColor: Colors[scheme].card }]}>
+            {/* Icon */}
+            <View style={[styles.deleteIconContainer, { backgroundColor: '#FEE2E2' }]}>
+              <Ionicons name="trash-outline" size={32} color="#DC2626" />
+            </View>
+
+            {/* Title */}
+            <ThemedText style={styles.deleteModalTitle}>Delete Assessment?</ThemedText>
+
+            {/* Description */}
+            <ThemedText style={styles.deleteModalDescription}>
+              Are you sure you want to delete this assessment?
+            </ThemedText>
+
+            {/* Assessment Info */}
+            <View style={[styles.deleteModalInfo, { backgroundColor: Colors[scheme].background }]}>
+              <ThemedText style={styles.deleteModalInfoText}>
+                {item.category} — {item.element}
+              </ThemedText>
+              <ThemedText style={styles.deleteModalInfoDate}>
+                {new Date(item.created_at).toLocaleDateString()}
+              </ThemedText>
+            </View>
+
+            {/* Warning */}
+            <View style={styles.deleteModalWarning}>
+              <Ionicons name="warning-outline" size={16} color="#F59E0B" />
+              <ThemedText style={styles.deleteModalWarningText}>
+                This action cannot be undone
+              </ThemedText>
+            </View>
+
+            {/* Buttons */}
+            <View style={styles.deleteModalButtons}>
+              <Pressable
+                style={[styles.deleteModalButton, styles.deleteModalCancelButton, { backgroundColor: Colors[scheme].background }]}
+                onPress={() => setDeleteModalVisible(false)}
+              >
+                <ThemedText style={styles.deleteModalCancelText}>Cancel</ThemedText>
+              </Pressable>
+              <Pressable
+                style={[styles.deleteModalButton, styles.deleteModalDeleteButton]}
+                onPress={handleDelete}
+              >
+                <Ionicons name="trash" size={18} color="#fff" />
+                <ThemedText style={styles.deleteModalDeleteText}>Delete</ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -390,6 +620,11 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: '700',
+    flex: 1,
+  },
+  editButton: {
+    padding: 4,
+    marginLeft: 'auto',
   },
 
   // Detail row styles
@@ -481,12 +716,145 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     opacity: 0.9,
   },
+  notesInput: {
+    fontSize: 15,
+    lineHeight: 24,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    minHeight: 100,
+    marginBottom: 12,
+  },
+  editButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
 
   // Actions
   actionsContainer: {
     flexDirection: 'row',
     gap: 12,
     marginTop: 8,
+  },
+
+  // Delete Button
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 12,
+  },
+  deleteButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#DC2626',
+  },
+
+  // Delete Modal Styles
+  deleteModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  deleteModalContent: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  deleteIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  deleteModalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  deleteModalDescription: {
+    fontSize: 15,
+    opacity: 0.7,
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 22,
+  },
+  deleteModalInfo: {
+    width: '100%',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  deleteModalInfoText: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  deleteModalInfoDate: {
+    fontSize: 13,
+    opacity: 0.6,
+  },
+  deleteModalWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 10,
+    marginBottom: 24,
+  },
+  deleteModalWarningText: {
+    fontSize: 13,
+    color: '#92400E',
+    fontWeight: '500',
+  },
+  deleteModalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  deleteModalButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  deleteModalCancelButton: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  deleteModalCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  deleteModalDeleteButton: {
+    backgroundColor: '#DC2626',
+  },
+  deleteModalDeleteText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });
 function openOnMap(lat: number, lon: number, id: string) {

@@ -23,29 +23,44 @@ export default function Home() {
   const insets = useSafeAreaInsets();
 
   const load = React.useCallback(async () => {
-    // Debug logging (disabled for cleaner output)
-    // console.log('Staff Dashboard - Loading data...');
-    // console.log('Staff Dashboard - User:', user?.uid);
-    // console.log('Staff Dashboard - User Profile:', userProfile);
-    // console.log('Staff Dashboard - User Role:', userProfile?.role);
-
     if (!user) {
-      // console.log('Staff Dashboard - No user, skipping load');
+      console.log('📊 No user, skipping load');
       return;
     }
 
-    // console.log('Staff Dashboard - Loading user assessments...');
+    console.log('📊 Loading assessments...');
     const rows = await FirestoreService.listAssessments(user.uid);
-    // console.log('Staff Dashboard - Loaded assessments:', rows.length);
+    console.log('📊 Setting state: Total =', rows.length);
+    
     setTotal(rows.length);
+    
     const start = new Date(); start.setHours(0,0,0,0);
     const end = new Date(); end.setHours(23,59,59,999);
-    setToday(rows.filter((r: Assessment) => r.created_at >= start.getTime() && r.created_at <= end.getTime()).length);
-    setRecent(rows.slice(0, 3));
+    const todayCount = rows.filter((r: Assessment) => r.created_at >= start.getTime() && r.created_at <= end.getTime()).length;
+    console.log('📊 Setting state: Today =', todayCount);
+    setToday(todayCount);
+    
+    const recentAssessments = rows.slice(0, 3);
+    console.log('📊 Setting state: Recent =', recentAssessments.length, 'items');
+    setRecent(recentAssessments);
+    
+    console.log('📊 State update complete!');
   }, [user]);
 
-  React.useEffect(() => { load(); }, [load]);
-  useFocusEffect(React.useCallback(() => { load(); }, [load]));
+  React.useEffect(() => { 
+    console.log('📊 Home page mounted, loading data...');
+    load(); 
+  }, [load]);
+  
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('📊 Home page focused, reloading data...');
+      load();
+    }, [load])
+  );
+
+  // Debug: Log current state values on every render
+  console.log('📊 RENDER - Current state: total=', total, 'today=', today, 'recent=', recent.length);
 
   return (
     <View style={[styles.wrapper, { backgroundColor: Colors[scheme].background }]}>
