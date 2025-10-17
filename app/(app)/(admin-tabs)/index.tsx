@@ -181,7 +181,10 @@ export default function AdminDashboard() {
               <Card
                 variant="elevated"
                 padding="sm"
-                style={[styles.metricCard, { backgroundColor: Colors[scheme].tint + '20' }]}
+                style={{
+                  ...styles.metricCard,
+                  backgroundColor: Colors[scheme].tint + '20',
+                }}
               >
                 <View style={styles.metricContent}>
                   <Ionicons
@@ -206,7 +209,10 @@ export default function AdminDashboard() {
               <Card
                 variant="elevated"
                 padding="sm"
-                style={[styles.metricCard, { backgroundColor: Colors[scheme].tint + '20' }]}
+                style={{
+                  ...styles.metricCard,
+                  backgroundColor: Colors[scheme].tint + '20',
+                }}
               >
                 <View style={styles.metricContent}>
                   <Ionicons
@@ -231,7 +237,10 @@ export default function AdminDashboard() {
               <Card
                 variant="elevated"
                 padding="sm"
-                style={[styles.metricCard, { backgroundColor: Colors[scheme].tint + '20' }]}
+                style={{
+                  ...styles.metricCard,
+                  backgroundColor: Colors[scheme].tint + '20',
+                }}
               >
                 <View style={styles.metricContent}>
                   <Ionicons
@@ -256,7 +265,10 @@ export default function AdminDashboard() {
               <Card
                 variant="elevated"
                 padding="sm"
-                style={[styles.metricCard, { backgroundColor: Colors[scheme].tint + '20' }]}
+                style={{
+                  ...styles.metricCard,
+                  backgroundColor: Colors[scheme].tint + '20',
+                }}
               >
                 <View style={styles.metricContent}>
                   <Ionicons
@@ -498,37 +510,36 @@ export default function AdminDashboard() {
         onRequestClose={() => setMatrixModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: Colors[scheme].card }]}>
+          <View 
+            style={[
+              styles.modalContent, 
+              { 
+                backgroundColor: Colors[scheme].card,
+              }
+            ]}
+          >
             {selectedMatrixCell && (
               <>
                 {/* Modal Header */}
                 <View style={[styles.modalHeader, { borderBottomColor: Colors[scheme].border }]}>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                      <View style={[styles.modalBadge, { 
-                        backgroundColor: getMatrixCellColor(
-                          selectedMatrixCell.priority, 
-                          selectedMatrixCell.condition,
-                          getMatrixCount(selectedMatrixCell.condition, selectedMatrixCell.priority)
-                        )
-                      }]}>
-                        <ThemedText style={styles.modalBadgeText}>
-                          {getMatrixCount(selectedMatrixCell.condition, selectedMatrixCell.priority)}
-                        </ThemedText>
-                      </View>
-                      <ThemedText style={styles.modalTitle}>
-                        {getPriorityLabel(selectedMatrixCell.priority)} × {getConditionLabel(selectedMatrixCell.condition)}
-                      </ThemedText>
-                    </View>
-                    <ThemedText style={styles.modalSubtitle}>
-                      {getMatrixAssessments(selectedMatrixCell.condition, selectedMatrixCell.priority).length} assessment{getMatrixAssessments(selectedMatrixCell.condition, selectedMatrixCell.priority).length !== 1 ? 's' : ''} found
+                  <View style={[styles.modalBadge, { 
+                    backgroundColor: getMatrixCellColor(
+                      selectedMatrixCell.priority, 
+                      selectedMatrixCell.condition,
+                      getMatrixCount(selectedMatrixCell.condition, selectedMatrixCell.priority)
+                    )
+                  }]}>
+                    <ThemedText style={styles.modalBadgeText}>
+                      {getMatrixCount(selectedMatrixCell.condition, selectedMatrixCell.priority)}
                     </ThemedText>
                   </View>
+                  
                   <TouchableOpacity 
                     onPress={() => setMatrixModalVisible(false)} 
                     style={[styles.closeButton, { backgroundColor: Colors[scheme].background }]}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   >
-                    <Ionicons name="close" size={20} color={Colors[scheme].text} />
+                    <Ionicons name="close" size={24} color={Colors[scheme].text} />
                   </TouchableOpacity>
                 </View>
 
@@ -846,6 +857,9 @@ const styles = StyleSheet.create({
     ...ResponsiveUtils.getShadow('lg'),
   },
   modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 20,
     borderBottomWidth: 1,
   },
@@ -853,7 +867,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
-    marginRight: 12,
     minWidth: 40,
     alignItems: 'center',
   },
@@ -862,9 +875,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
-    flex: 1,
+    flexShrink: 1,
   },
   modalSubtitle: {
     fontSize: 13,
@@ -872,9 +885,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
