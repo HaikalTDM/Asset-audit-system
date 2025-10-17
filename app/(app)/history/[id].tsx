@@ -187,7 +187,15 @@ export default function AssessmentDetailsScreen() {
         </Pressable>
 
         {/* Score Badge - Prominent */}
-        <Card variant="elevated" style={[styles.scoreCard, { backgroundColor: g.color + '15', borderColor: g.color + '40', borderWidth: 1 }]}>
+        <Card 
+          variant="elevated" 
+          style={{
+            ...styles.scoreCard,
+            backgroundColor: g.color + '15',
+            borderColor: g.color + '40',
+            borderWidth: 1,
+          }}
+        >
           <View style={styles.scoreContent}>
             <View style={[styles.scoreCircle, { backgroundColor: g.color }]}>
               <ThemedText style={styles.scoreGrade}>{g.grade}</ThemedText>
@@ -586,16 +594,20 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   scoreCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'visible',
   },
   scoreGrade: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '700',
     color: '#fff',
+    textAlign: 'center',
+    lineHeight: 32,
+    includeFontPadding: false,
   },
   scoreInfo: {
     flex: 1,
@@ -680,10 +692,10 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   badgeTitle: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
     opacity: 0.6,
-    marginBottom: 8,
+    marginBottom: 10,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -691,23 +703,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 8,
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderRadius: 20,
-    marginBottom: 6,
+    marginBottom: 8,
     alignSelf: 'stretch',
   },
   badgeText: {
-    fontSize: 9,
+    fontSize: 13,
     fontWeight: '600',
     flexShrink: 1,
     textAlign: 'center',
-    letterSpacing: -0.2,
+    letterSpacing: 0,
   },
   badgeSubtext: {
-    fontSize: 11,
-    opacity: 0.5,
+    fontSize: 13,
+    opacity: 0.6,
+    fontWeight: '500',
   },
 
   // Notes styles
