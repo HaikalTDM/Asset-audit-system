@@ -12,7 +12,6 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { ResponsiveUtils, Spacing, Typography, DeviceType } from '@/constants/responsive';
-// import { DebugInfo } from '@/components/DebugInfo';
 
 export default function Home() {
   const [total, setTotal] = React.useState(0);

@@ -12,7 +12,6 @@ import { StyleSheet, View, ScrollView, Image, Modal, TouchableOpacity, FlatList 
 import { useAuth } from '@/lib/auth/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { ResponsiveUtils, Typography, Spacing, DeviceType } from '@/constants/responsive';
-// import { DebugInfo } from '@/components/DebugInfo';
 
 export default function AdminDashboard() {
   const [totalAssessments, setTotalAssessments] = React.useState(0);
