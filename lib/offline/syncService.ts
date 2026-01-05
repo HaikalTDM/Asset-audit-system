@@ -1,18 +1,16 @@
 import { FirestoreService } from '../firestore';
-import { ImageUploadService } from '../imageUpload';
 import {
   getOfflineAssessments,
   updateSyncStatus,
   deleteOfflineAssessment,
   getOfflinePhotos,
-  markPhotoAsUploaded,
   type OfflineAssessment,
 } from './offlineStorage';
 import { isOnline, getCurrentNetworkStatus } from './networkMonitor';
 
 /**
  * Sync Service
- * Handles synchronization of offline data to Firebase
+ * Handles synchronization of offline data to the API
  */
 
 export type SyncResult = {
@@ -173,14 +171,15 @@ async function syncSingleAssessment(
       status: 'uploading_photos',
     });
 
-    const uploadedPhotoUris = await uploadOfflinePhotos(id, photos, assessmentData.userId);
+    const offlinePhotos = await getOfflinePhotos(id);
+    const firstPhoto = offlinePhotos[0]?.localUri || assessmentData.photo_uri;
 
     // Check if still online before creating assessment
     if (!(await isOnline())) {
       throw new Error('Lost network connection during sync');
     }
 
-    // Step 2: Create assessment in Firestore
+    // Step 2: Create assessment via API
     notifySyncProgress({
       total: totalCount,
       current: currentIndex + 1,
@@ -188,12 +187,9 @@ async function syncSingleAssessment(
       status: 'creating_assessment',
     });
 
-    // Use the first uploaded photo as the main photo_uri
-    const mainPhotoUri = uploadedPhotoUris[0];
-
     await FirestoreService.createAssessment({
       ...assessmentData,
-      photo_uri: mainPhotoUri,
+      photo_uri: firstPhoto,
     });
 
     // Step 3: Mark as synced and cleanup
@@ -228,61 +224,6 @@ async function syncSingleAssessment(
 
     return false;
   }
-}
-
-/**
- * Upload offline photos to Firebase Storage
- */
-async function uploadOfflinePhotos(
-  assessmentId: string,
-  photoMetadata: Array<{ id: string; uri: string }>,
-  userId: string
-): Promise<string[]> {
-  console.log(`Uploading ${photoMetadata.length} photos for assessment ${assessmentId}`);
-
-  const uploadedUris: string[] = [];
-
-  // Get actual photo files from offline storage
-  const offlinePhotos = await getOfflinePhotos(assessmentId);
-
-  for (const photoMeta of photoMetadata) {
-    const offlinePhoto = offlinePhotos.find((p) => p.id === photoMeta.id);
-    
-    if (!offlinePhoto) {
-      console.warn(`Photo ${photoMeta.id} not found in offline storage`);
-      continue;
-    }
-
-    // Skip if already uploaded
-    if (offlinePhoto.uploaded && offlinePhoto.remoteUri) {
-      uploadedUris.push(offlinePhoto.remoteUri);
-      continue;
-    }
-
-    try {
-      // Upload to Firebase Storage
-      const remoteUri = await ImageUploadService.uploadImageWithRetry(
-        offlinePhoto.localUri,
-        userId,
-        `${assessmentId}_${photoMeta.id}`
-      );
-
-      // Mark as uploaded
-      await markPhotoAsUploaded(photoMeta.id, remoteUri);
-      uploadedUris.push(remoteUri);
-
-      console.log(`Uploaded photo ${photoMeta.id}`);
-    } catch (error) {
-      console.error(`Failed to upload photo ${photoMeta.id}:`, error);
-      throw new Error(`Photo upload failed: ${photoMeta.id}`);
-    }
-  }
-
-  if (uploadedUris.length === 0) {
-    throw new Error('No photos were uploaded successfully');
-  }
-
-  return uploadedUris;
 }
 
 /**

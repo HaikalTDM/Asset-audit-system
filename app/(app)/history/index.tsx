@@ -21,7 +21,7 @@ export default function HistoryList() {
     try {
       setLoading(true);
       setError(null);
-      const assessments = await FirestoreService.listAssessments(user.uid);
+      const assessments = await FirestoreService.listAssessments(user.id);
       setRows(assessments);
     } catch (err) {
       console.error('Error loading assessments:', err);

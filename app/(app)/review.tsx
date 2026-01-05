@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams, Stack } from 'expo-router';
 import React, { useState } from 'react';
-import { Image, StyleSheet, View, ScrollView, TouchableOpacity, Modal, Pressable } from 'react-native';
+import { Alert, Image, StyleSheet, View, ScrollView, TouchableOpacity, Modal, Pressable } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -10,13 +10,6 @@ import { FirestoreService } from '@/lib/firestore';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useOffline } from '@/lib/offline/OfflineContext';
 import { saveOfflineAssessment } from '@/lib/offline/offlineStorage';
-
-function bucket(total: number) {
-  if (total <= 5) return { grade: 'A', label: 'Very Good' };
-  if (total <= 10) return { grade: 'B', label: 'Good' };
-  if (total <= 15) return { grade: 'C', label: 'Fair' };
-  return { grade: 'D', label: 'Poor' };
-}
 
 function getRiskInfo(score: number) {
   if (score >= 1 && score <= 6) return { level: 'Low', color: '#22c55e' };
@@ -29,7 +22,9 @@ export default function Review() {
   const scheme = useColorScheme() ?? 'light';
   const params = useLocalSearchParams<{
     photoUri?: string; lat?: string; lon?: string;
+    building?: string; floor?: string; room?: string;
     category?: string; element?: string; floorLevel?: string;
+    createdAt?: string;
     condition?: string; priority?: string;
     damageCategory?: string; rootCause?: string; rootCauseDetails?: string;
     notes?: string;
@@ -40,10 +35,13 @@ export default function Review() {
   const { user } = useAuth();
   const { isOnline, refreshPendingCount } = useOffline();
 
+  const createdAt = params.createdAt ? Number(params.createdAt) : Date.now();
+  const createdAtLabel = Number.isFinite(createdAt) ? new Date(createdAt).toLocaleString() : 'Unknown';
+  const floorDisplay = params.floor || params.floorLevel || '';
+
   const condition = Number(params.condition ?? 0);
   const priority  = Number(params.priority ?? 0);
   const total = condition * priority;
-  const b = bucket(total);
   const riskInfo = getRiskInfo(total);
 
   async function onSave() {
@@ -59,10 +57,13 @@ export default function Review() {
       }
 
       const assessmentData = {
-        userId: user.uid,
-        created_at: Date.now(),
+        userId: user.id,
+        created_at: createdAt,
         latitude: params.lat ? Number(params.lat) : null,
         longitude: params.lon ? Number(params.lon) : null,
+        building: params.building || '',
+        floor: params.floor || '',
+        room: params.room || '',
         category: params.category as string,
         element: params.element as string,
         floorLevel: params.floorLevel || '',
@@ -77,10 +78,10 @@ export default function Review() {
 
       // Check if online
       if (isOnline) {
-        // Online: Upload to Firebase
+        // Online: Upload to API
         setUploadingImage(true);
         await FirestoreService.createAssessmentWithImageUpload(assessmentData);
-        console.log('✅ Assessment saved to Firebase successfully');
+        console.log('✅ Assessment saved to API successfully');
         
         setShowSuccessModal(true);
       } else {
@@ -112,10 +113,13 @@ export default function Review() {
           try {
             const photoId = `photo_${Date.now()}`;
             await saveOfflineAssessment({
-              userId: user.uid,
-              created_at: Date.now(),
+              userId: user.id,
+              created_at: createdAt,
               latitude: params.lat ? Number(params.lat) : null,
               longitude: params.lon ? Number(params.lon) : null,
+              building: params.building || '',
+              floor: params.floor || '',
+              room: params.room || '',
               category: params.category as string,
               element: params.element as string,
               floorLevel: params.floorLevel || '',
@@ -188,6 +192,28 @@ export default function Review() {
       <View style={styles.section}>
         <ThemedText style={styles.sectionTitle}>Asset Information</ThemedText>
         <View style={styles.row}>
+          <ThemedText style={styles.label}>ID:</ThemedText>
+          <ThemedText style={styles.value}>Auto-generated on save</ThemedText>
+        </View>
+        {params.building ? (
+          <View style={styles.row}>
+            <ThemedText style={styles.label}>Building:</ThemedText>
+            <ThemedText style={styles.value}>{params.building}</ThemedText>
+          </View>
+        ) : null}
+        {floorDisplay ? (
+          <View style={styles.row}>
+            <ThemedText style={styles.label}>Floor:</ThemedText>
+            <ThemedText style={styles.value}>{floorDisplay}</ThemedText>
+          </View>
+        ) : null}
+        {params.room ? (
+          <View style={styles.row}>
+            <ThemedText style={styles.label}>Room:</ThemedText>
+            <ThemedText style={styles.value}>{params.room}</ThemedText>
+          </View>
+        ) : null}
+        <View style={styles.row}>
           <ThemedText style={styles.label}>Category:</ThemedText>
           <ThemedText style={styles.value}>{params.category}</ThemedText>
         </View>
@@ -195,12 +221,6 @@ export default function Review() {
           <ThemedText style={styles.label}>Element:</ThemedText>
           <ThemedText style={styles.value}>{params.element}</ThemedText>
         </View>
-        {params.floorLevel && (
-          <View style={styles.row}>
-            <ThemedText style={styles.label}>Floor/Level:</ThemedText>
-            <ThemedText style={styles.value}>{params.floorLevel}</ThemedText>
-          </View>
-        )}
       </View>
 
       {/* Damage & Cause */}
@@ -228,15 +248,27 @@ export default function Review() {
         </View>
       )}
 
-      {/* Location */}
-      {(params.lat && params.lon) && (
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Location</ThemedText>
-          <ThemedText style={styles.gpsText}>
-            📍 {Number(params.lat).toFixed(6)}, {Number(params.lon).toFixed(6)}
-          </ThemedText>
+      {/* Audit Metadata */}
+      <View style={styles.section}>
+        <ThemedText style={styles.sectionTitle}>Audit Metadata</ThemedText>
+        <View style={styles.row}>
+          <ThemedText style={styles.label}>Time:</ThemedText>
+          <ThemedText style={styles.value}>{createdAtLabel}</ThemedText>
         </View>
-      )}
+        {(params.lat && params.lon) ? (
+          <View style={styles.row}>
+            <ThemedText style={styles.label}>GPS:</ThemedText>
+            <ThemedText style={styles.value}>
+              {Number(params.lat).toFixed(6)}, {Number(params.lon).toFixed(6)}
+            </ThemedText>
+          </View>
+        ) : (
+          <View style={styles.row}>
+            <ThemedText style={styles.label}>GPS:</ThemedText>
+            <ThemedText style={styles.value}>Unavailable</ThemedText>
+          </View>
+        )}
+      </View>
 
       {/* Notes */}
       {params.notes && (
@@ -384,10 +416,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
   },
-  gpsText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
   notesText: {
     fontSize: 14,
     lineHeight: 20,
@@ -470,3 +498,4 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+

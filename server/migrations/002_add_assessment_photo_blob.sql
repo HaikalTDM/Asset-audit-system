@@ -1,0 +1,3 @@
+ALTER TABLE assessments
+  ADD COLUMN photo_blob LONGBLOB NULL,
+  ADD COLUMN photo_mime VARCHAR(64) NULL;

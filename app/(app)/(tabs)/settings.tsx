@@ -16,11 +16,9 @@ import { FirestoreService } from '@/lib/firestore';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StorageCalculationService, type FormattedStorageMetrics } from '@/lib/storageCalculation';
+import { api } from '@/lib/api';
 import { DateFilterModal } from '@/components/ui/DateFilterModal';
-import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import * as ImagePicker from 'expo-image-picker';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '@/config/firebase.config';
 
 export default function Settings() {
   const scheme = useColorScheme() ?? 'light';
@@ -29,7 +27,7 @@ export default function Settings() {
   const [storageMetrics, setStorageMetrics] = React.useState<FormattedStorageMetrics | null>(null);
   const [isCalculating, setIsCalculating] = React.useState(false);
   const [calculationError, setCalculationError] = React.useState<string | null>(null);
-  const { user, userProfile, signOut } = useAuth();
+  const { user, userProfile, signOut, refreshUserProfile } = useAuth();
   const insets = useSafeAreaInsets();
   const [showDateFilterModal, setShowDateFilterModal] = React.useState(false);
   const signingOutRef = React.useRef(false);
@@ -342,8 +340,8 @@ export default function Settings() {
     setCalculationError(null);
 
     try {
-      console.log('Calculating Firebase storage metrics for user:', user.uid);
-      const metrics = await StorageCalculationService.getFormattedUserStorageMetrics(user.uid);
+      console.log('Calculating storage metrics for user:', user.id);
+      const metrics = await StorageCalculationService.calculateUserStorageMetrics(user.id);
       console.log('Storage metrics calculated:', metrics);
       if (!signingOutRef.current) setStorageMetrics(metrics);
     } catch (error) {
@@ -373,7 +371,7 @@ export default function Settings() {
         filterText = ' (All Time)';
       }
       
-      const path = await exportZip(user?.uid, filters || undefined);
+      const path = await exportZip(user?.id, filters || undefined);
       Alert.alert(
         'Export Complete', 
         `Your data has been exported to CSV${filterText}.\n\nFile: ${path.split('/').pop()}\n\nImage URLs are included and clickable in Excel/Google Sheets.`,
@@ -393,11 +391,11 @@ export default function Settings() {
   const onImport = async () => {
     try { 
       setBusy('import'); 
-      const result = await importZip(user?.uid);
+      const result = await importZip(user?.id);
       if (result) { 
         Alert.alert(
           'Import Complete', 
-          'Your CSV data has been imported successfully.\n\nNote: Images must already be in Firebase Storage (via exported URLs).',
+          'Your CSV data has been imported successfully.\n\nNote: Image URLs must already be reachable on the server.',
           [{ text: 'OK' }]
         ); 
         await calculateStorageMetrics(); 
@@ -422,14 +420,11 @@ export default function Settings() {
 
     try {
       setUpdating(true);
-      if (user) {
-        await updateProfile(user, {
-          displayName: newDisplayName.trim()
-        });
-        Alert.alert('Success', 'Display name updated successfully');
-        setShowNameModal(false);
-        setNewDisplayName('');
-      }
+      await api.updateMe({ displayName: newDisplayName.trim() });
+      await refreshUserProfile();
+      Alert.alert('Success', 'Display name updated successfully');
+      setShowNameModal(false);
+      setNewDisplayName('');
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Failed to update display name');
     } finally {
@@ -461,29 +456,14 @@ export default function Settings() {
 
     try {
       setUpdating(true);
-
-      // Re-authenticate user before password change (security requirement)
-      if (user && user.email) {
-        const credential = EmailAuthProvider.credential(user.email, currentPassword);
-        await reauthenticateWithCredential(user, credential);
-        
-        // Update password
-        await updatePassword(user, newPassword);
-        
-        Alert.alert('Success', 'Password changed successfully');
-        setShowPasswordModal(false);
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-      }
+      await api.changePassword(currentPassword, newPassword);
+      Alert.alert('Success', 'Password changed successfully');
+      setShowPasswordModal(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
     } catch (error: any) {
-      if (error.code === 'auth/wrong-password') {
-        Alert.alert('Error', 'Current password is incorrect');
-      } else if (error.code === 'auth/too-many-requests') {
-        Alert.alert('Error', 'Too many failed attempts. Please try again later');
-      } else {
-        Alert.alert('Error', error?.message || 'Failed to change password');
-      }
+      Alert.alert('Error', error?.message || 'Failed to change password');
     } finally {
       setUpdating(false);
     }
@@ -516,25 +496,14 @@ export default function Settings() {
 
       setUploadingPhoto(true);
       const imageUri = result.assets[0].uri;
-
-      // Upload to Firebase Storage
-      const response = await fetch(imageUri);
-      const blob = await response.blob();
-      
-      const filename = `profile_pictures/${user?.uid}_${Date.now()}.jpg`;
-      const storageRef = ref(storage, filename);
-      
-      await uploadBytes(storageRef, blob);
-      const downloadURL = await getDownloadURL(storageRef);
-
-      // Update user profile with photo URL
-      if (user) {
-        await updateProfile(user, {
-          photoURL: downloadURL
-        });
-        
-        Alert.alert('Success', 'Profile picture updated successfully');
-      }
+      const photo = {
+        uri: imageUri,
+        name: `profile_${Date.now()}.jpg`,
+        type: 'image/jpeg',
+      };
+      await api.uploadProfilePhoto(photo);
+      await refreshUserProfile();
+      Alert.alert('Success', 'Profile picture updated successfully');
     } catch (error: any) {
       console.error('Error uploading profile picture:', error);
       Alert.alert('Error', error?.message || 'Failed to upload profile picture');
@@ -583,9 +552,9 @@ export default function Settings() {
         {/* Profile Header with Avatar */}
         <View style={styles.profileHeader}>
           <View style={styles.profilePictureContainer}>
-            {user?.photoURL ? (
+            {user?.photoUrl ? (
               <Image 
-                source={{ uri: user.photoURL }} 
+                source={{ uri: user.photoUrl }} 
                 style={styles.profilePicture}
               />
             ) : (
@@ -726,7 +695,7 @@ export default function Settings() {
               <ThemedText style={styles.metricValue}>{storageMetrics.imageCount}</ThemedText>
             </View>
             <View style={styles.metricRow}>
-              <ThemedText style={styles.metricLabel}>Firestore Data:</ThemedText>
+              <ThemedText style={styles.metricLabel}>Database Data:</ThemedText>
               <ThemedText style={styles.metricValue}>{storageMetrics.formattedFirestoreSize}</ThemedText>
             </View>
             <View style={styles.metricRow}>
@@ -765,7 +734,7 @@ export default function Settings() {
             { text: 'Cancel', style: 'cancel' },
             { text: 'Delete', style: 'destructive', onPress: async () => {
               if (user) {
-                await FirestoreService.clearUserData(user.uid);
+                await FirestoreService.clearUserData(user.id);
                 await calculateStorageMetrics();
               }
             } },
@@ -971,3 +940,5 @@ export default function Settings() {
     </View>
   );
 }
+
+

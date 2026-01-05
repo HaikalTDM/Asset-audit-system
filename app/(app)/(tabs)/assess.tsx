@@ -12,12 +12,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { StaffOrAdmin } from '@/lib/auth/RoleGuard';
 import MapView, { Marker } from 'react-native-maps';
 
-const ELEMENTS: Record<string, string[]> = {
-  Civil: ['Roof', 'External wall', 'Internal wall', 'Floor', 'Ceiling', 'Doors/Windows'],
-  Electrical: ['Lighting', 'Sockets', 'Wiring', 'DB/Panel', 'Earthing'],
-  Mechanical: ['HVAC', 'Pumps', 'Fire system', 'Water distribution', 'Pipe'],
-};
-
 const DAMAGE_CATEGORIES = [
   'Structural Damage',
   'Water Damage',
@@ -237,14 +231,21 @@ export default function Assess() {
     photoUri?: string; 
     lat?: string; 
     lon?: string; 
+    building?: string;
+    floor?: string;
+    room?: string;
     category?: string; 
     element?: string;
-    floorLevel?: string;
+    createdAt?: string;
   }>();
 
-  const [category, setCategory] = useState(params.category || 'Civil');
-  const [element, setElement] = useState(params.element || ELEMENTS[params.category || 'Civil'][0]);
-  const [floorLevel, setFloorLevel] = useState(params.floorLevel || '');
+  const category = params.category || '';
+  const element = params.element || '';
+  const building = params.building || '';
+  const floor = params.floor || '';
+  const room = params.room || '';
+  const createdAt = params.createdAt ? Number(params.createdAt) : Date.now();
+  const createdAtLabel = Number.isFinite(createdAt) ? new Date(createdAt).toLocaleString() : 'Unknown';
   const [condition, setCondition] = useState<number>(3);
   const [priority, setPriority] = useState<number>(3);
   const [damageCategory, setDamageCategory] = useState('');
@@ -253,19 +254,12 @@ export default function Assess() {
   const [notes, setNotes] = useState('');
   
   // Modal visibility states
-  const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [showElementModal, setShowElementModal] = useState(false);
   const [showDamageModal, setShowDamageModal] = useState(false);
   const [showRootCauseModal, setShowRootCauseModal] = useState(false);
-
-  useEffect(() => { setElement(ELEMENTS[category][0]); }, [category]);
 
   const prevPhotoRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (prevPhotoRef.current !== params.photoUri) {
-      setCategory(params.category || 'Civil'); 
-      setElement(params.element || ELEMENTS[params.category || 'Civil'][0]); 
-      setFloorLevel(params.floorLevel || '');
       setCondition(3); 
       setPriority(3); 
       setDamageCategory('');
@@ -274,7 +268,7 @@ export default function Assess() {
       setNotes('');
       prevPhotoRef.current = params.photoUri as string | undefined;
     }
-  }, [params.photoUri, params.category, params.element, params.floorLevel]);
+  }, [params.photoUri]);
 
   const continueToReview = () => {
     router.push({
@@ -283,9 +277,12 @@ export default function Assess() {
         photoUri: params.photoUri ?? '', 
         lat: params.lat ?? '', 
         lon: params.lon ?? '', 
+        building,
+        floor,
+        room,
         category, 
         element,
-        floorLevel: floorLevel || '',
+        createdAt: String(createdAt),
         condition: String(condition), 
         priority: String(priority),
         damageCategory: damageCategory || '',
@@ -300,6 +297,7 @@ export default function Assess() {
   const scheme = useColorScheme() ?? 'light';
   const scrollRef = useRef<ScrollView>(null);
   const [notesY, setNotesY] = useState(0);
+  const hasCoords = Boolean(params.lat && params.lon);
 
   return (
     <StaffOrAdmin>
@@ -318,90 +316,29 @@ export default function Assess() {
             {/* Photo Preview */}
             {params.photoUri ? <Image source={{ uri: params.photoUri }} style={styles.photo} /> : null}
             
-            {/* Location Map */}
-            {(params.lat && params.lon) ? (
-              <Card variant="elevated" style={styles.card}>
-                <View style={styles.locationHeader}>
-                  <View style={styles.locationTitleRow}>
-                    <Ionicons name="location" size={20} color={Colors[scheme].tint} />
-                    <ThemedText style={styles.locationTitle}>GPS Location</ThemedText>
-                  </View>
-                  <TouchableOpacity 
-                    style={[styles.openMapButton, { backgroundColor: Colors[scheme].tint }]}
-                    onPress={() => {
-                      const url = Platform.select({
-                        ios: `maps:0,0?q=${params.lat},${params.lon}`,
-                        android: `geo:0,0?q=${params.lat},${params.lon}`,
-                      });
-                      if (url) Linking.openURL(url);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="open-outline" size={16} color="#fff" />
-                    <ThemedText style={{ color: '#fff', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>Open</ThemedText>
-                  </TouchableOpacity>
-                </View>
-                
-                <View style={styles.mapContainer}>
-                  <MapView
-                    style={styles.map}
-                    initialRegion={{
-                      latitude: Number(params.lat),
-                      longitude: Number(params.lon),
-                      latitudeDelta: 0.005,
-                      longitudeDelta: 0.005,
-                    }}
-                    scrollEnabled={false}
-                    zoomEnabled={false}
-                    pitchEnabled={false}
-                    rotateEnabled={false}
-                  >
-                    <Marker
-                      coordinate={{
-                        latitude: Number(params.lat),
-                        longitude: Number(params.lon),
-                      }}
-                      title="Assessment Location"
-                    />
-                  </MapView>
-                </View>
-                
-                <View style={[styles.coordinatesCard, { backgroundColor: Colors[scheme].tint + '15' }]}>
-                  <View style={styles.coordinateRow}>
-                    <ThemedText style={styles.coordinateLabel}>Latitude:</ThemedText>
-                    <ThemedText style={[styles.coordinateValue, { color: Colors[scheme].tint }]}>
-                      {Number(params.lat).toFixed(6)}
-                    </ThemedText>
-                  </View>
-                  <View style={styles.coordinateRow}>
-                    <ThemedText style={styles.coordinateLabel}>Longitude:</ThemedText>
-                    <ThemedText style={[styles.coordinateValue, { color: Colors[scheme].tint }]}>
-                      {Number(params.lon).toFixed(6)}
-                    </ThemedText>
-                  </View>
-                </View>
-              </Card>
-            ) : null}
-
             {/* Asset Details */}
             <Card variant="elevated" style={styles.card}>
-              <SelectInput
-                label="Category"
-                value={category}
-                placeholder="Select category"
-                icon="apps-outline"
-                onPress={() => setShowCategoryModal(true)}
-                required
-              />
-              
-              <SelectInput
-                label="Building Element"
-                value={element}
-                placeholder="Select element"
-                icon="cube-outline"
-                onPress={() => setShowElementModal(true)}
-                required
-              />
+              <SectionHeader title="Asset Information" />
+              <View style={styles.detailRow}>
+                <ThemedText style={styles.detailLabel}>Building</ThemedText>
+                <ThemedText style={styles.detailValue}>{building || '-'}</ThemedText>
+              </View>
+              <View style={styles.detailRow}>
+                <ThemedText style={styles.detailLabel}>Floor</ThemedText>
+                <ThemedText style={styles.detailValue}>{floor || '-'}</ThemedText>
+              </View>
+              <View style={styles.detailRow}>
+                <ThemedText style={styles.detailLabel}>Room</ThemedText>
+                <ThemedText style={styles.detailValue}>{room || '-'}</ThemedText>
+              </View>
+              <View style={styles.detailRow}>
+                <ThemedText style={styles.detailLabel}>Category</ThemedText>
+                <ThemedText style={styles.detailValue}>{category || '-'}</ThemedText>
+              </View>
+              <View style={styles.detailRow}>
+                <ThemedText style={styles.detailLabel}>Building Element</ThemedText>
+                <ThemedText style={styles.detailValue}>{element || '-'}</ThemedText>
+              </View>
             </Card>
 
             {/* Condition & Priority */}
@@ -476,6 +413,84 @@ export default function Assess() {
                 />
               </View>
             </Card>
+
+            {/* Location & Time */}
+            <Card variant="elevated" style={styles.card}>
+              <View style={styles.locationHeader}>
+                <View style={styles.locationTitleRow}>
+                  <Ionicons name="location" size={20} color={Colors[scheme].tint} />
+                  <ThemedText style={styles.locationTitle}>GPS & Time</ThemedText>
+                </View>
+                {hasCoords ? (
+                  <TouchableOpacity 
+                    style={[styles.openMapButton, { backgroundColor: Colors[scheme].tint }]}
+                    onPress={() => {
+                      const url = Platform.select({
+                        ios: `maps:0,0?q=${params.lat},${params.lon}`,
+                        android: `geo:0,0?q=${params.lat},${params.lon}`,
+                      });
+                      if (url) Linking.openURL(url);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="open-outline" size={16} color="#fff" />
+                    <ThemedText style={{ color: '#fff', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>Open</ThemedText>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+              
+              {hasCoords ? (
+                <>
+                  <View style={styles.mapContainer}>
+                    <MapView
+                      style={styles.map}
+                      initialRegion={{
+                        latitude: Number(params.lat),
+                        longitude: Number(params.lon),
+                        latitudeDelta: 0.005,
+                        longitudeDelta: 0.005,
+                      }}
+                      scrollEnabled={false}
+                      zoomEnabled={false}
+                      pitchEnabled={false}
+                      rotateEnabled={false}
+                    >
+                      <Marker
+                        coordinate={{
+                          latitude: Number(params.lat),
+                          longitude: Number(params.lon),
+                        }}
+                        title="Assessment Location"
+                      />
+                    </MapView>
+                  </View>
+                  
+                  <View style={[styles.coordinatesCard, { backgroundColor: Colors[scheme].tint + '15' }]}>
+                    <View style={styles.coordinateRow}>
+                      <ThemedText style={styles.coordinateLabel}>Latitude:</ThemedText>
+                      <ThemedText style={[styles.coordinateValue, { color: Colors[scheme].tint }]}>
+                        {Number(params.lat).toFixed(6)}
+                      </ThemedText>
+                    </View>
+                    <View style={styles.coordinateRow}>
+                      <ThemedText style={styles.coordinateLabel}>Longitude:</ThemedText>
+                      <ThemedText style={[styles.coordinateValue, { color: Colors[scheme].tint }]}>
+                        {Number(params.lon).toFixed(6)}
+                      </ThemedText>
+                    </View>
+                  </View>
+                </>
+              ) : (
+                <View style={styles.coordinatesCard}>
+                  <ThemedText style={styles.gpsUnavailable}>GPS unavailable</ThemedText>
+                </View>
+              )}
+
+              <View style={[styles.timeCard, { backgroundColor: Colors[scheme].card }]}>
+                <ThemedText style={styles.coordinateLabel}>Time:</ThemedText>
+                <ThemedText style={styles.timeValue}>{createdAtLabel}</ThemedText>
+              </View>
+            </Card>
             
             <View style={{ height: 88 }} />
           </ScrollView>
@@ -489,47 +504,6 @@ export default function Assess() {
         </View>
 
         {/* Selection Modals */}
-        <SelectionModal
-          visible={showCategoryModal}
-          title="Select Category"
-          options={Object.keys(ELEMENTS)}
-          selectedValue={category}
-          onSelect={setCategory}
-          onClose={() => setShowCategoryModal(false)}
-          renderIcon={(item) => 
-            item === 'Civil' ? 'construct-outline' : 
-            item === 'Electrical' ? 'flash-outline' : 
-            'cog-outline'
-          }
-        />
-
-        <SelectionModal
-          visible={showElementModal}
-          title="Select Building Element"
-          options={ELEMENTS[category]}
-          selectedValue={element}
-          onSelect={setElement}
-          onClose={() => setShowElementModal(false)}
-          renderIcon={(item) => 
-            item.includes('Roof') ? 'home-outline' :
-            item.includes('External') ? 'leaf-outline' :
-            item.includes('Internal') ? 'cube-outline' :
-            item.includes('Floor') ? 'grid-outline' :
-            item.includes('Ceiling') ? 'layers-outline' :
-            item.includes('Lighting') ? 'bulb-outline' :
-            item.includes('Sockets') ? 'flash-outline' :
-            item.includes('Wiring') ? 'git-branch-outline' :
-            item.includes('DB') || item.includes('Panel') ? 'server-outline' :
-            item.includes('Earthing') ? 'earth-outline' :
-            item.includes('HVAC') ? 'thermometer-outline' :
-            item.includes('Pumps') ? 'cog-outline' :
-            item.includes('Water') ? 'water-outline' :
-            item.includes('Fire') ? 'flame-outline' :
-            item.includes('Pipe') ? 'git-merge-outline' :
-            'cube-outline'
-          }
-        />
-
         <SelectionModal
           visible={showDamageModal}
           title="Select Damage Type"
@@ -578,6 +552,22 @@ const styles = StyleSheet.create({
   card: {
     marginBottom: 16,
   },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  detailLabel: {
+    width: 130,
+    fontSize: 14,
+    fontWeight: '600',
+    opacity: 0.7,
+  },
+  detailValue: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+  },
   
   // Location Map styles
   locationHeader: {
@@ -618,6 +608,20 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     gap: 8,
+  },
+  gpsUnavailable: {
+    fontSize: 14,
+    opacity: 0.6,
+  },
+  timeCard: {
+    marginTop: 10,
+    padding: 12,
+    borderRadius: 8,
+  },
+  timeValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 4,
   },
   coordinateRow: {
     flexDirection: 'row',

@@ -38,10 +38,10 @@ export default function HistoryTab() {
     if (!user) return;
 
     try {
-      console.log('📜 History page: Loading assessments for user:', user.uid);
+      console.log('📜 History page: Loading assessments for user:', user.id);
       setLoading(true);
       setError(null);
-      const assessments = await FirestoreService.listAssessments(user.uid);
+      const assessments = await FirestoreService.listAssessments(user.id);
       console.log('📜 History page: Loaded', assessments.length, 'assessments');
       setRows(assessments);
     } catch (err) {
@@ -727,3 +727,4 @@ const styles = StyleSheet.create({
     marginHorizontal: 2,
   },
 });
+

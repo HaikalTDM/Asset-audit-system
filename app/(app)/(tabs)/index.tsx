@@ -28,7 +28,7 @@ export default function Home() {
     }
 
     console.log('📊 Loading assessments...');
-    const rows = await FirestoreService.listAssessments(user.uid);
+    const rows = await FirestoreService.listAssessments(user.id);
     console.log('📊 Setting state: Total =', rows.length);
     
     setTotal(rows.length);
@@ -600,3 +600,4 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
   },
 });
+

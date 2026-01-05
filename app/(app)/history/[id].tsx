@@ -148,6 +148,7 @@ export default function AssessmentDetailsScreen() {
   const g = grade(total);
   const conditionInfo = getConditionInfo(item.condition);
   const priorityInfo = getPriorityInfo(item.priority);
+  const floorDisplay = item.floor || item.floorLevel;
 
   return (
     <>
@@ -216,6 +217,42 @@ export default function AssessmentDetailsScreen() {
             <ThemedText style={styles.cardTitle}>Assessment Details</ThemedText>
           </View>
 
+          {item.building ? (
+            <View style={styles.detailRow}>
+              <View style={styles.detailIcon}>
+                <Ionicons name="business-outline" size={18} color={Colors[scheme].tint} />
+              </View>
+              <View style={styles.detailContent}>
+                <ThemedText style={styles.detailLabel}>Building</ThemedText>
+                <ThemedText style={styles.detailValue}>{item.building}</ThemedText>
+              </View>
+            </View>
+          ) : null}
+
+          {floorDisplay ? (
+            <View style={styles.detailRow}>
+              <View style={styles.detailIcon}>
+                <Ionicons name="layers-outline" size={18} color={Colors[scheme].tint} />
+              </View>
+              <View style={styles.detailContent}>
+                <ThemedText style={styles.detailLabel}>Floor</ThemedText>
+                <ThemedText style={styles.detailValue}>{floorDisplay}</ThemedText>
+              </View>
+            </View>
+          ) : null}
+
+          {item.room ? (
+            <View style={styles.detailRow}>
+              <View style={styles.detailIcon}>
+                <Ionicons name="door-closed-outline" size={18} color={Colors[scheme].tint} />
+              </View>
+              <View style={styles.detailContent}>
+                <ThemedText style={styles.detailLabel}>Room</ThemedText>
+                <ThemedText style={styles.detailValue}>{item.room}</ThemedText>
+              </View>
+            </View>
+          ) : null}
+
           {/* Category & Element */}
           <View style={styles.detailRow}>
             <View style={styles.detailIcon}>
@@ -236,18 +273,6 @@ export default function AssessmentDetailsScreen() {
               <ThemedText style={styles.detailValue}>{item.element}</ThemedText>
             </View>
           </View>
-
-          {item.floorLevel && (
-            <View style={styles.detailRow}>
-              <View style={styles.detailIcon}>
-                <Ionicons name="layers-outline" size={18} color={Colors[scheme].tint} />
-              </View>
-              <View style={styles.detailContent}>
-                <ThemedText style={styles.detailLabel}>Floor/Level</ThemedText>
-                <ThemedText style={styles.detailValue}>{item.floorLevel}</ThemedText>
-              </View>
-            </View>
-          )}
 
           {item.damageCategory && (
             <>

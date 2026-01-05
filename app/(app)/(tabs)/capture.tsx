@@ -1,11 +1,12 @@
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
 import { ThemedText } from '@/components/themed-text';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import React from 'react';
-import { Image, StyleSheet, View, ActivityIndicator, ScrollView, Pressable, Modal, TouchableOpacity } from 'react-native';
+import { Image, StyleSheet, View, ScrollView, Pressable, Modal, TouchableOpacity } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { useFocusEffect } from '@react-navigation/native';
@@ -20,41 +21,23 @@ const ELEMENTS_BY_CATEGORY: Record<string, string[]> = {
   'Mechanical': ['HVAC', 'Plumbing', 'Elevator', 'Fire System', 'Ventilation', 'Pump']
 };
 
-const FLOOR_LEVELS = [
-  'Ground Floor',
-  '1st Floor', 
-  '2nd Floor', 
-  '3rd Floor', 
-  '4th Floor', 
-  '5th Floor',
-  '6th Floor',
-  '7th Floor',
-  '8th Floor',
-  '9th Floor',
-  '10th Floor',
-  'Rooftop',
-  'Basement',
-  'Parking Area'
-];
-
 export default function AuditTab() {
   const scheme = useColorScheme() ?? 'light';
   const [uri, setUri] = React.useState<string | null>(null);
   const [coords, setCoords] = React.useState<{ latitude: number; longitude: number } | null>(null);
-  const [resolvingLoc, setResolvingLoc] = React.useState(false);
+  const [building, setBuilding] = React.useState('');
+  const [floor, setFloor] = React.useState('');
+  const [room, setRoom] = React.useState('');
   const [category, setCategory] = React.useState<string>('');
   const [element, setElement] = React.useState<string>('');
-  const [floorLevel, setFloorLevel] = React.useState<string>('');
   const [showCategoryModal, setShowCategoryModal] = React.useState(false);
   const [showElementModal, setShowElementModal] = React.useState(false);
-  const [showFloorModal, setShowFloorModal] = React.useState(false);
 
   React.useEffect(() => {
     (async () => {
       try {
         const perm = await Location.requestForegroundPermissionsAsync();
         if (perm.status !== 'granted') return;
-        setResolvingLoc(true);
         const last = await Location.getLastKnownPositionAsync();
         if (last?.coords) {
           setCoords({ latitude: last.coords.latitude, longitude: last.coords.longitude });
@@ -63,15 +46,17 @@ export default function AuditTab() {
             if (pos) setCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
           });
         }
-      } catch {} finally { setResolvingLoc(false); }
+      } catch {}
     })();
   }, []);
 
   useFocusEffect(React.useCallback(() => {
     setUri(null);
+    setBuilding('');
+    setFloor('');
+    setRoom('');
     setCategory('');
     setElement('');
-    setFloorLevel('');
     return undefined;
   }, []));
 
@@ -104,7 +89,6 @@ export default function AuditTab() {
       return;
     }
 
-    setResolvingLoc(true);
     try {
       const last = await Location.getLastKnownPositionAsync();
       if (last?.coords) {
@@ -113,7 +97,7 @@ export default function AuditTab() {
         const pos = await getCurrentPositionWithTimeout(6000);
         if (pos) setCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
       }
-    } catch {} finally { setResolvingLoc(false); }
+    } catch {}
   };
 
   const pickFromLibrary = async () => {
@@ -139,7 +123,6 @@ export default function AuditTab() {
       return;
     }
 
-    setResolvingLoc(true);
     try {
       const last = await Location.getLastKnownPositionAsync();
       if (last?.coords) {
@@ -148,20 +131,24 @@ export default function AuditTab() {
         const pos = await getCurrentPositionWithTimeout(6000);
         if (pos) setCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
       }
-    } catch {} finally { setResolvingLoc(false); }
+    } catch {}
   };
 
-  const canProceed = category && element && uri;
+  const canProceed = building && floor && room && category && element && uri;
 
   const handleBeginAudit = () => {
     if (!canProceed) return;
+    const createdAt = Date.now();
     router.push({
       pathname: '/(app)/(tabs)/assess',
       params: {
         photoUri: uri,
+        building,
+        floor,
+        room,
         category,
         element,
-        floorLevel: floorLevel || '',
+        createdAt: String(createdAt),
         lat: coords?.latitude?.toString() ?? '',
         lon: coords?.longitude?.toString() ?? '',
       },
@@ -196,6 +183,33 @@ export default function AuditTab() {
           </View>
 
           <View style={styles.sectionContent}>
+            <View style={styles.readonlyRow}>
+              <ThemedText style={styles.label}>ID</ThemedText>
+              <ThemedText style={styles.readonlyValue}>Auto-generated on save</ThemedText>
+            </View>
+
+            <Input
+              label="Building"
+              value={building}
+              onChangeText={setBuilding}
+              placeholder="Enter building name"
+              required
+            />
+            <Input
+              label="Floor"
+              value={floor}
+              onChangeText={setFloor}
+              placeholder="Enter floor"
+              required
+            />
+            <Input
+              label="Room"
+              value={room}
+              onChangeText={setRoom}
+              placeholder="Enter room"
+              required
+            />
+
             <ThemedText style={styles.label}>Category *</ThemedText>
             <Pressable
               style={[
@@ -244,28 +258,6 @@ export default function AuditTab() {
               <Ionicons name="chevron-down" size={20} color={Colors[scheme].text} style={{ opacity: 0.5 }} />
             </Pressable>
 
-            <ThemedText style={styles.label}>Floor/Level (Optional)</ThemedText>
-            <Pressable
-              style={[
-                styles.selectButton,
-                { 
-                  backgroundColor: Colors[scheme].card,
-                  borderColor: floorLevel ? Colors[scheme].tint : Colors[scheme].border
-                }
-              ]}
-              onPress={() => setShowFloorModal(true)}
-            >
-              <Ionicons 
-                name="layers-outline" 
-                size={20} 
-                color={floorLevel ? Colors[scheme].tint : Colors[scheme].text} 
-                style={{ opacity: floorLevel ? 1 : 0.5 }}
-              />
-              <ThemedText style={[styles.selectButtonText, !floorLevel && { opacity: 0.5 }]}>
-                {floorLevel || 'Select Floor/Level'}
-              </ThemedText>
-              <Ionicons name="chevron-down" size={20} color={Colors[scheme].text} style={{ opacity: 0.5 }} />
-            </Pressable>
           </View>
         </Card>
 
@@ -312,46 +304,6 @@ export default function AuditTab() {
                 />
               </View>
             )}
-          </View>
-        </Card>
-
-        {/* Step 3: Location */}
-        <Card variant="elevated" style={styles.card}>
-          <View style={styles.cardHeader}>
-            <View style={[styles.stepBadge, { backgroundColor: coords ? Colors[scheme].tint : Colors[scheme].border }]}>
-              <ThemedText style={[styles.stepBadgeText, { color: coords ? '#fff' : Colors[scheme].text }]}>3</ThemedText>
-            </View>
-            <ThemedText style={styles.cardTitle}>Location Data</ThemedText>
-          </View>
-
-          <View style={styles.sectionContent}>
-            <View style={styles.locationRow}>
-              <Ionicons 
-                name={coords ? "location" : "location-outline"} 
-                size={24} 
-                color={coords ? Colors[scheme].tint : Colors[scheme].text} 
-                style={{ opacity: coords ? 1 : 0.5 }}
-              />
-              <View style={{ flex: 1 }}>
-                {resolvingLoc && !coords ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <ActivityIndicator size="small" color={Colors[scheme].tint} />
-                    <ThemedText style={styles.locationText}>Detecting location...</ThemedText>
-                  </View>
-                ) : coords ? (
-                  <ThemedText style={styles.locationText}>
-                    {coords.latitude.toFixed(6)}, {coords.longitude.toFixed(6)}
-                  </ThemedText>
-                ) : (
-                  <ThemedText style={[styles.locationText, { opacity: 0.5 }]}>
-                    GPS unavailable (optional)
-                  </ThemedText>
-                )}
-              </View>
-              {coords && (
-                <View style={[styles.statusDot, { backgroundColor: Colors[scheme].tint }]} />
-              )}
-            </View>
           </View>
         </Card>
 
@@ -470,54 +422,6 @@ export default function AuditTab() {
         </Pressable>
       </Modal>
 
-      {/* Floor/Level Modal */}
-      <Modal
-        visible={showFloorModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowFloorModal(false)}
-      >
-        <Pressable style={styles.modalOverlay} onPress={() => setShowFloorModal(false)}>
-          <View style={[styles.modalContent, { backgroundColor: Colors[scheme].card }]}>
-            <View style={styles.modalHeader}>
-              <ThemedText style={styles.modalTitle}>Select Floor/Level</ThemedText>
-              <TouchableOpacity onPress={() => setShowFloorModal(false)}>
-                <Ionicons name="close" size={24} color={Colors[scheme].text} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalList}>
-              {FLOOR_LEVELS.map(floor => (
-                <Pressable
-                  key={floor}
-                  style={[
-                    styles.modalOption,
-                    floorLevel === floor && { backgroundColor: Colors[scheme].tint + '15' }
-                  ]}
-                  onPress={() => {
-                    setFloorLevel(floor);
-                    setShowFloorModal(false);
-                  }}
-                >
-                  <Ionicons
-                    name="layers"
-                    size={24}
-                    color={floorLevel === floor ? Colors[scheme].tint : Colors[scheme].text}
-                  />
-                  <ThemedText style={[
-                    styles.modalOptionText,
-                    floorLevel === floor && { color: Colors[scheme].tint, fontWeight: '600' }
-                  ]}>
-                    {floor}
-                  </ThemedText>
-                  {floorLevel === floor && (
-                    <Ionicons name="checkmark-circle" size={24} color={Colors[scheme].tint} />
-                  )}
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
-        </Pressable>
-      </Modal>
     </StaffOrAdmin>
   );
 }
@@ -579,6 +483,16 @@ const styles = StyleSheet.create({
     opacity: 0.8,
     marginBottom: 4,
   },
+  readonlyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  readonlyValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    opacity: 0.7,
+  },
   selectButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -613,19 +527,6 @@ const styles = StyleSheet.create({
   },
   changePhotoButton: {
     alignSelf: 'center',
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  locationText: {
-    fontSize: 15,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
   },
   beginButton: {
     marginTop: 8,

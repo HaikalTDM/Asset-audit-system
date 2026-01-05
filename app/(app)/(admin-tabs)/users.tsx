@@ -9,8 +9,7 @@ import React from 'react';
 import { StyleSheet, View, FlatList, Alert, Modal, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
-import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '@/config/firebase.config';
+import { api } from '@/lib/api';
 
 export default function UserManagement() {
   const [users, setUsers] = React.useState<UserProfile[]>([]);
@@ -132,18 +131,7 @@ export default function UserManagement() {
       await load();
     } catch (error: any) {
       console.error('Error creating user:', error);
-      const code = error?.code || '';
-      if (code === 'auth/email-already-in-use') {
-        setCreateError('This email is already in use. Try another email or update the existing user.');
-      } else if (code === 'auth/invalid-email') {
-        setCreateError('Please enter a valid email address.');
-      } else if (code === 'auth/operation-not-allowed') {
-        setCreateError('Email/password sign-in is disabled in Firebase. Enable it in the Firebase Console.');
-      } else if (code === 'auth/weak-password') {
-        setCreateError('Password is too weak. Use at least 6 characters.');
-      } else {
-        setCreateError('Failed to create user. Please try again.');
-      }
+      setCreateError(error?.message || 'Failed to create user. Please try again.');
     } finally {
       setCreating(false);
     }
@@ -162,28 +150,22 @@ export default function UserManagement() {
 
   const handleSendPasswordResetEmail = async (targetUser: UserProfile) => {
     Alert.alert(
-      'Send Password Reset Email',
-      `Send password reset email to:\n\n${targetUser.email}\n\nThe user will receive an email with instructions to reset their password.`,
+      'Reset Password',
+      `Reset password for:\n\n${targetUser.email}\n\nA temporary password will be generated and shown to you.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Send Email',
+          text: 'Generate Password',
           onPress: async () => {
             try {
-              await sendPasswordResetEmail(auth, targetUser.email);
+              const result = await api.adminResetPassword(targetUser.id);
               Alert.alert(
-                'Email Sent!',
-                `Password reset email has been sent to:\n\n${targetUser.email}\n\nThe user can check their inbox and follow the link to reset their password.`
+                'Temporary Password Created',
+                `Temporary password for ${targetUser.email}:\n\n${result.tempPassword}\n\nAsk the user to sign in and change their password.`
               );
             } catch (error: any) {
-              console.error('Error sending password reset email:', error);
-              if (error.code === 'auth/user-not-found') {
-                Alert.alert('Error', 'User not found in Firebase Authentication');
-              } else if (error.code === 'auth/invalid-email') {
-                Alert.alert('Error', 'Invalid email address');
-              } else {
-                Alert.alert('Error', error?.message || 'Failed to send password reset email');
-              }
+              console.error('Error resetting password:', error);
+              Alert.alert('Error', error?.message || 'Failed to reset password');
             }
           }
         }

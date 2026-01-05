@@ -128,30 +128,8 @@ export default function AdminSettings() {
     setCalculationError(null);
 
     try {
-      console.log('Calculating ALL Firebase storage metrics (admin view)');
-      // Admin views ALL system storage
-      let metrics: FormattedStorageMetrics;
-      const svcAny = StorageCalculationService as any;
-      if (typeof svcAny?.getFormattedSystemStorageMetrics === 'function') {
-        metrics = await svcAny.getFormattedSystemStorageMetrics();
-      } else {
-        // Fallback for environments/bundles where the helper isn't available
-        const system = await StorageCalculationService.calculateSystemStorageMetrics();
-        const allAssessments = await FirestoreService.listAllAssessments();
-        metrics = {
-          totalDocuments: system.totalDocuments,
-          firestoreSize: system.totalFirestoreSize,
-          storageSize: system.totalStorageSize,
-          totalSize: system.totalSystemSize,
-          assessmentCount: allAssessments.length,
-          imageCount: system.userBreakdown.reduce((sum, u) => sum + u.metrics.imageCount, 0),
-          lastCalculated: Date.now(),
-          formattedFirestoreSize: StorageCalculationService.formatBytes(system.totalFirestoreSize),
-          formattedStorageSize: StorageCalculationService.formatBytes(system.totalStorageSize),
-          formattedTotalSize: StorageCalculationService.formatBytes(system.totalSystemSize),
-        };
-      }
-      console.log('System storage metrics calculated:', metrics);
+      console.log('Calculating system storage metrics (admin view)');
+      const metrics = await StorageCalculationService.calculateSystemStorageMetrics();
       if (!signingOutRef.current) setStorageMetrics(metrics);
     } catch (error) {
       console.error('Error calculating storage metrics:', error);
@@ -204,7 +182,7 @@ export default function AdminSettings() {
       if (result) { 
         Alert.alert(
           'Import Complete', 
-          'CSV data has been imported successfully.\n\nNote: Images must already be in Firebase Storage (via exported URLs).',
+          'CSV data has been imported successfully.\n\nNote: Image URLs must already be reachable on the server.',
           [{ text: 'OK' }]
         ); 
         await calculateStorageMetrics(); 
@@ -331,7 +309,7 @@ export default function AdminSettings() {
               <ThemedText style={styles.metricValue}>{storageMetrics.imageCount}</ThemedText>
             </View>
             <View style={styles.metricRow}>
-              <ThemedText style={styles.metricLabel}>Firestore Data:</ThemedText>
+              <ThemedText style={styles.metricLabel}>Database Data:</ThemedText>
               <ThemedText style={styles.metricValue}>{storageMetrics.formattedFirestoreSize}</ThemedText>
             </View>
             <View style={styles.metricRow}>

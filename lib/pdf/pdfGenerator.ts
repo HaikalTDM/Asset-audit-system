@@ -337,6 +337,24 @@ async function generateSingleAssessmentHTML(
   <div class="section">
     <div class="section-title">Assessment Details</div>
     <div class="info-grid">
+      ${assessment.building ? `
+      <div class="info-item">
+        <div class="info-label">Building</div>
+        <div class="info-value">${assessment.building}</div>
+      </div>
+      ` : ''}
+      ${(assessment.floor || assessment.floorLevel) ? `
+      <div class="info-item">
+        <div class="info-label">Floor</div>
+        <div class="info-value">${assessment.floor || assessment.floorLevel}</div>
+      </div>
+      ` : ''}
+      ${assessment.room ? `
+      <div class="info-item">
+        <div class="info-label">Room</div>
+        <div class="info-value">${assessment.room}</div>
+      </div>
+      ` : ''}
       <div class="info-item">
         <div class="info-label">Category</div>
         <div class="info-value">${assessment.category}</div>
@@ -345,12 +363,6 @@ async function generateSingleAssessmentHTML(
         <div class="info-label">Element</div>
         <div class="info-value">${assessment.element}</div>
       </div>
-      ${assessment.floorLevel ? `
-      <div class="info-item">
-        <div class="info-label">Floor/Level</div>
-        <div class="info-value">${assessment.floorLevel}</div>
-      </div>
-      ` : ''}
       ${assessment.damageCategory ? `
       <div class="info-item">
         <div class="info-label">Damage Type</div>
@@ -658,6 +670,24 @@ async function generateAssessmentSection(
       <div class="assessment-id">${assessment.id}</div>
     </div>
     <div class="info-row">
+      ${assessment.building ? `
+      <div class="info-item">
+        <div class="info-label">Building</div>
+        <div class="info-value">${assessment.building}</div>
+      </div>
+      ` : ''}
+      ${(assessment.floor || assessment.floorLevel) ? `
+      <div class="info-item">
+        <div class="info-label">Floor</div>
+        <div class="info-value">${assessment.floor || assessment.floorLevel}</div>
+      </div>
+      ` : ''}
+      ${assessment.room ? `
+      <div class="info-item">
+        <div class="info-label">Room</div>
+        <div class="info-value">${assessment.room}</div>
+      </div>
+      ` : ''}
       <div class="info-item">
         <div class="info-label">Category</div>
         <div class="info-value">${assessment.category}</div>
@@ -666,12 +696,6 @@ async function generateAssessmentSection(
         <div class="info-label">Element</div>
         <div class="info-value">${assessment.element}</div>
       </div>
-      ${assessment.floorLevel ? `
-      <div class="info-item">
-        <div class="info-label">Floor/Level</div>
-        <div class="info-value">${assessment.floorLevel}</div>
-      </div>
-      ` : ''}
       ${assessment.damageCategory ? `
       <div class="info-item">
         <div class="info-label">Damage Type</div>

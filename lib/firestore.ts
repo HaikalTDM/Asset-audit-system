@@ -1,7 +1,4 @@
-import { collection, getDocs, doc, getDoc, updateDoc, deleteDoc, query, where, orderBy, setDoc } from 'firebase/firestore';
-import { ref, deleteObject } from 'firebase/storage';
-import { db, storage } from '@/config/firebase.config';
-import { ImageUploadService } from './imageUpload';
+import { api } from '@/lib/api';
 
 export type UserRole = 'staff' | 'admin';
 
@@ -13,397 +10,162 @@ export type UserProfile = {
   created_at: number;
   updated_at: number;
   isActive: boolean;
+  photoUrl?: string;
 };
 
 export type Assessment = {
-  id: string; // Now required since we always generate custom IDs
+  id: string;
   userId: string;
   created_at: number;
   latitude: number | null;
   longitude: number | null;
+  building?: string;
+  floor?: string;
+  room?: string;
   category: string;
   element: string;
-  floorLevel?: string; // NEW: Floor/Level information
+  floorLevel?: string;
   condition: number;
   priority: number;
-  damageCategory?: string; // NEW: Type of damage
-  rootCause?: string; // NEW: Root cause category
-  rootCauseDetails?: string; // NEW: Detailed root cause description
+  damageCategory?: string;
+  rootCause?: string;
+  rootCauseDetails?: string;
   photo_uri: string;
   notes: string;
 };
 
-export class FirestoreService {
-  // User Profile Management
-  static async createUserProfile(userId: string, email: string, displayName: string, role: UserRole = 'staff') {
-    try {
-      const userProfile: UserProfile = {
-        id: userId,
-        email,
-        displayName,
-        role,
-        created_at: Date.now(),
-        updated_at: Date.now(),
-        isActive: true,
-      };
+function mapAssessment(row: any): Assessment {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    created_at: row.created_at,
+    latitude: row.latitude,
+    longitude: row.longitude,
+    building: row.building || '',
+    floor: row.floor || '',
+    room: row.room || '',
+    category: row.category,
+    element: row.element,
+    floorLevel: row.floorLevel || '',
+    condition: row.condition_rating,
+    priority: row.priority_rating,
+    damageCategory: row.damage_category || '',
+    rootCause: row.root_cause || '',
+    rootCauseDetails: row.root_cause_details || '',
+    photo_uri: row.photo_uri || row.photo_url || '',
+    notes: row.notes || '',
+  };
+}
 
-      await setDoc(doc(db, 'users', userId), userProfile);
-      return userProfile;
-    } catch (error) {
-      console.error('Error creating user profile:', error);
-      throw error;
+export class FirestoreService {
+  static async listAssessments(userId: string) {
+    const data = await api.listAssessments(userId);
+    return (data.assessments || []).map(mapAssessment);
+  }
+
+  static async listAllAssessments(): Promise<Assessment[]> {
+    const data = await api.listAssessments();
+    return (data.assessments || []).map(mapAssessment);
+  }
+
+  static async getAssessment(id: string): Promise<Assessment> {
+    const data = await api.getAssessment(id);
+    return mapAssessment(data.assessment);
+  }
+
+  static async createAssessment(assessment: Omit<Assessment, 'id'>): Promise<Assessment> {
+    const form = new FormData();
+    form.append('created_at', String(assessment.created_at));
+    form.append('building', assessment.building || '');
+    form.append('floor', assessment.floor || '');
+    form.append('room', assessment.room || '');
+    form.append('category', assessment.category);
+    form.append('element', assessment.element);
+    form.append('condition', String(assessment.condition));
+    form.append('priority', String(assessment.priority));
+    form.append('damageCategory', assessment.damageCategory || '');
+    form.append('rootCause', assessment.rootCause || '');
+    form.append('rootCauseDetails', assessment.rootCauseDetails || '');
+    form.append('notes', assessment.notes || '');
+    if (assessment.latitude != null) form.append('latitude', String(assessment.latitude));
+    if (assessment.longitude != null) form.append('longitude', String(assessment.longitude));
+    if (assessment.photo_uri && assessment.photo_uri.startsWith('http')) {
+      form.append('photo_uri', assessment.photo_uri);
+    } else if (assessment.photo_uri) {
+      form.append('photo', {
+        uri: assessment.photo_uri,
+        name: 'assessment.jpg',
+        type: 'image/jpeg',
+      } as any);
+    }
+    const data = await api.createAssessment(form);
+    return mapAssessment(data.assessment);
+  }
+
+  static async createAssessmentWithImageUpload(assessment: Omit<Assessment, 'id'>) {
+    return this.createAssessment(assessment);
+  }
+
+  static async updateAssessment(id: string, data: Partial<Assessment>) {
+    const payload: Record<string, any> = {};
+    if (data.notes !== undefined) payload.notes = data.notes;
+    const res = await api.updateAssessment(id, payload);
+    return mapAssessment(res.assessment);
+  }
+
+  static async deleteAssessment(id: string) {
+    await api.deleteAssessment(id);
+  }
+
+  static async listAllUsers(): Promise<UserProfile[]> {
+    const data = await api.listUsers();
+    return (data.users || []).map((u: any) => ({
+      id: u.id,
+      email: u.email,
+      displayName: u.displayName,
+      role: u.role,
+      created_at: u.created_at,
+      updated_at: u.updated_at,
+      isActive: u.isActive,
+      photoUrl: u.photoUrl || '',
+    }));
+  }
+
+  static async createUserProfile(userId: string, email: string, displayName: string, role: UserRole = 'staff') {
+    await api.adminCreateUser(email, 'Temp-ChangeMe', displayName, role);
+    return { id: userId, email, displayName, role, created_at: Date.now(), updated_at: Date.now(), isActive: true };
+  }
+
+  static async updateUserRole(userId: string, role: UserRole) {
+    await api.adminUpdateUser(userId, { role });
+  }
+
+  static async updateUserActiveStatus(userId: string, isActive: boolean) {
+    await api.adminUpdateUser(userId, { isActive });
+  }
+
+  static async deleteUser(userId: string) {
+    await api.adminDeleteUser(userId);
+  }
+
+  static async clearUserData(userId: string): Promise<void> {
+    const data = await api.listAssessments(userId);
+    const list = data.assessments || [];
+    for (const a of list) {
+      await api.deleteAssessment(a.id);
+    }
+  }
+
+  static async clearAllSystemData(): Promise<void> {
+    const data = await api.listAssessments();
+    const list = data.assessments || [];
+    for (const a of list) {
+      await api.deleteAssessment(a.id);
     }
   }
 
   static async getUserProfile(userId: string): Promise<UserProfile | null> {
-    try {
-      const docRef = doc(db, 'users', userId);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        return docSnap.data() as UserProfile;
-      }
-      return null;
-    } catch (error) {
-      const anyErr: any = error as any;
-      if (anyErr?.code === 'permission-denied') {
-        console.warn('Permission denied getting user profile');
-        return null; // Suppress during sign-out or restricted contexts
-      }
-      console.error('Error getting user profile:', error);
-      throw error;
-    }
-  }
-
-  static async updateUserRole(userId: string, role: UserRole) {
-    try {
-      const docRef = doc(db, 'users', userId);
-      await updateDoc(docRef, {
-        role,
-        updated_at: Date.now(),
-      });
-    } catch (error) {
-      console.error('Error updating user role:', error);
-      throw error;
-    }
-  }
-
-  static async updateUserActiveStatus(userId: string, isActive: boolean) {
-    try {
-      const docRef = doc(db, 'users', userId);
-      await updateDoc(docRef, {
-        isActive: isActive,
-        updated_at: Date.now(),
-      });
-    } catch (error) {
-      console.error('Error updating user active status:', error);
-      throw error;
-    }
-  }
-
-  static async deleteUser(userId: string) {
-    try {
-      // Delete all user's assessments first
-      const assessmentsQuery = query(
-        collection(db, 'assessments'),
-        where('userId', '==', userId)
-      );
-      const assessmentsSnapshot = await getDocs(assessmentsQuery);
-      
-      // Delete all assessments and their photos
-      const deletePromises = assessmentsSnapshot.docs.map(async (assessmentDoc) => {
-        // Delete from firestore
-        await deleteDoc(assessmentDoc.ref);
-        
-        // Delete associated photo from storage if it exists
-        const assessment = assessmentDoc.data();
-        if (assessment.photo_uri) {
-          try {
-            // Extract the path from the URL
-            const photoPath = assessment.photo_uri.split('/o/')[1]?.split('?')[0];
-            if (photoPath) {
-              const decodedPath = decodeURIComponent(photoPath);
-              const photoRef = ref(storage, decodedPath);
-              await deleteObject(photoRef);
-            }
-          } catch (photoError) {
-            console.warn('Error deleting photo:', photoError);
-            // Continue even if photo deletion fails
-          }
-        }
-      });
-      
-      await Promise.all(deletePromises);
-      
-      // Finally, delete the user document
-      const userDocRef = doc(db, 'users', userId);
-      await deleteDoc(userDocRef);
-      
-      console.log(`Deleted user ${userId} and ${assessmentsSnapshot.docs.length} assessments`);
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      throw error;
-    }
-  }
-
-  static async listAllUsers(): Promise<UserProfile[]> {
-    try {
-      const q = query(collection(db, 'users'), orderBy('created_at', 'desc'));
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => doc.data() as UserProfile);
-    } catch (error: any) {
-      if (error?.code === 'permission-denied') {
-        console.warn('Permission denied listing users');
-        return [];
-      }
-      console.error('Error listing users:', error);
-
-      // Provide helpful error messages for common issues
-      if (error?.code === 'permission-denied') {
-        throw new Error('Permission denied: Please ensure Firebase security rules are properly configured. See FIREBASE_RULES_DEVELOPMENT.md for immediate fix.');
-      }
-
-      throw new Error(`Failed to load users: ${error?.message || 'Unknown error'}`);
-    }
-  }
-
-  // Helper function to pad numbers with leading zeros
-  private static pad2(n: number): string {
-    return String(n).padStart(2, '0');
-  }
-
-  // Helper function to pad sequence numbers with leading zeros (5 digits)
-  private static pad5(n: number): string {
-    return String(n).padStart(5, '0');
-  }
-
-  // Generate custom assessment ID in format: ddmmyyyy-timestamp
-  // Using timestamp ensures uniqueness without requiring Firestore queries
-  private static async generateCustomAssessmentId(): Promise<string> {
-    const now = new Date();
-    const day = this.pad2(now.getDate());
-    const month = this.pad2(now.getMonth() + 1);
-    const year = now.getFullYear();
-    const timestamp = Date.now();
-    
-    const customId = `${day}${month}${year}-${timestamp}`;
-    console.log('✅ Generated custom ID:', customId);
-    return customId;
-  }
-
-  // Assessment Management
-  static async createAssessment(assessment: Omit<Assessment, 'id'>) {
-    try {
-      const customId = await this.generateCustomAssessmentId();
-      const assessmentWithId = { ...assessment, id: customId };
-
-      // Use setDoc with custom ID instead of addDoc
-      await setDoc(doc(db, 'assessments', customId), assessmentWithId);
-
-      return assessmentWithId;
-    } catch (error) {
-      console.error('Error creating assessment:', error);
-      throw error;
-    }
-  }
-
-  static async createAssessmentWithImageUpload(assessmentData: Omit<Assessment, 'id'>) {
-    try {
-      console.log('Starting assessment creation with image upload...');
-
-      // Generate custom assessment ID first
-      const customId = await this.generateCustomAssessmentId();
-      console.log('Generated custom ID for assessment:', customId);
-
-      // Upload the image to Firebase Storage using the custom ID
-      console.log('Uploading image to Firebase Storage...');
-      const downloadURL = await ImageUploadService.uploadImageWithRetry(
-        assessmentData.photo_uri,
-        assessmentData.userId,
-        customId
-      );
-      console.log('Image uploaded successfully, URL:', downloadURL);
-
-      // Create the assessment with the Firebase Storage URL and custom ID
-      const assessmentWithStorageUrl = {
-        ...assessmentData,
-        id: customId,
-        photo_uri: downloadURL
-      };
-
-      console.log('Creating Firestore document with ID:', customId);
-      // Use setDoc with custom ID instead of addDoc
-      await setDoc(doc(db, 'assessments', customId), assessmentWithStorageUrl);
-      console.log('Assessment created successfully in Firestore');
-
-      return assessmentWithStorageUrl;
-    } catch (error) {
-      console.error('Error creating assessment with image upload:', error);
-
-      // Provide more context in the error message
-      if (error instanceof Error) {
-        throw new Error(`Failed to create assessment: ${error.message}`);
-      } else {
-        throw new Error('Failed to create assessment: Unknown error occurred');
-      }
-    }
-  }
-
-  static async listAssessments(userId: string) {
-    try {
-      console.log('🔍 Fetching assessments for user:', userId);
-      const q = query(
-        collection(db, 'assessments'),
-        where('userId', '==', userId),
-        orderBy('created_at', 'desc')
-      );
-      const querySnapshot = await getDocs(q);
-      const assessments = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Assessment[];
-      console.log('✅ Fetched', assessments.length, 'assessments from Firestore');
-      return assessments;
-    } catch (error) {
-      const anyErr: any = error as any;
-      if (anyErr?.code === 'permission-denied') {
-        console.warn('⚠️ Permission denied listing assessments');
-        return [];
-      }
-      console.error('❌ Error listing assessments:', error);
-      throw error;
-    }
-  }
-
-  static async listAllAssessments(): Promise<Assessment[]> {
-    try {
-      const q = query(
-        collection(db, 'assessments'),
-        orderBy('created_at', 'desc')
-      );
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Assessment[];
-    } catch (error: any) {
-      if (error?.code === 'permission-denied') {
-        console.warn('Permission denied listing all assessments');
-        return [];
-      }
-      console.error('Error listing all assessments:', error);
-
-      // Provide helpful error messages for common issues
-      if (error?.code === 'permission-denied') {
-        throw new Error('Permission denied: Please ensure Firebase security rules are properly configured. See FIREBASE_RULES_DEVELOPMENT.md for immediate fix.');
-      }
-
-      if (error?.code === 'failed-precondition') {
-        throw new Error('Database index required: Please create the necessary Firestore indexes.');
-      }
-
-      throw new Error(`Failed to load assessments: ${error?.message || 'Unknown error'}`);
-    }
-  }
-
-  static async getAssessment(id: string) {
-    try {
-      const docRef = doc(db, 'assessments', id);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() } as Assessment;
-      }
-      throw new Error('Assessment not found');
-    } catch (error) {
-      console.error('Error getting assessment:', error);
-      throw error;
-    }
-  }
-
-  static async updateAssessment(id: string, data: Partial<Assessment>) {
-    try {
-      const docRef = doc(db, 'assessments', id);
-      await updateDoc(docRef, data);
-      return { id, ...data };
-    } catch (error) {
-      console.error('Error updating assessment:', error);
-      throw error;
-    }
-  }
-
-  static async deleteAssessment(id: string) {
-    try {
-      // First, get the assessment to retrieve the image URL and user ID
-      const assessment = await this.getAssessment(id);
-
-      // Delete the Firestore document
-      const docRef = doc(db, 'assessments', id);
-      await deleteDoc(docRef);
-
-      // Delete the associated image from Firebase Storage
-      try {
-        if (assessment.photo_uri) {
-          // Try to delete using the download URL first (more reliable)
-          await ImageUploadService.deleteImageByUrl(assessment.photo_uri);
-        } else {
-          // Fallback: delete using userId and assessmentId
-          await ImageUploadService.deleteImage(assessment.userId, id);
-        }
-      } catch (imageError) {
-        // Log the error but don't fail the entire operation
-        // The assessment document is already deleted, so this is just cleanup
-        console.warn('Failed to delete associated image, but assessment was deleted successfully:', imageError);
-      }
-
-      console.log(`Successfully deleted assessment ${id} and its associated image`);
-    } catch (error) {
-      console.error('Error deleting assessment:', error);
-      throw error;
-    }
-  }
-
-  // Clear all user data (for staff users - only their own data)
-  static async clearUserData(userId: string): Promise<void> {
-    try {
-      // Get all user's assessments
-      const assessments = await this.listAssessments(userId);
-
-      // Delete all assessments (this will also delete their images)
-      const deletePromises = assessments.map(assessment =>
-        assessment.id ? this.deleteAssessment(assessment.id) : Promise.resolve()
-      );
-
-      await Promise.all(deletePromises);
-      console.log(`Cleared ${assessments.length} assessments and their images for user ${userId}`);
-    } catch (error) {
-      console.error('Error clearing user data:', error);
-      throw error;
-    }
-  }
-
-  // Clear all system data (admin only)
-  static async clearAllSystemData(): Promise<void> {
-    try {
-      // Get all assessments
-      const assessments = await this.listAllAssessments();
-
-      // Delete all assessments (this will also delete their images)
-      const deletePromises = assessments.map(assessment =>
-        assessment.id ? this.deleteAssessment(assessment.id) : Promise.resolve()
-      );
-
-      await Promise.all(deletePromises);
-      console.log(`Cleared ${assessments.length} total assessments and their images from system`);
-    } catch (error) {
-      console.error('Error clearing all system data:', error);
-      throw error;
-    }
-  }
-
-  // Test function to verify custom ID generation (for debugging)
-  static async testCustomIdGeneration(): Promise<string> {
-    console.log('Testing custom ID generation...');
-    const testId = await this.generateCustomAssessmentId();
-    console.log('Test ID generated:', testId);
-    return testId;
+    const users = await this.listAllUsers();
+    return users.find((u) => u.id === userId) || null;
   }
 }

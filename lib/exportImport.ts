@@ -46,9 +46,9 @@ export interface ExportFilters {
  */
 export async function exportCSV(userId?: string, filters?: ExportFilters) {
   try {
-    // Fetch assessments from Firestore
+    // Fetch assessments from API
     let assessments = userId 
-      ? await FirestoreService.listUserAssessments(userId)
+      ? await FirestoreService.listAssessments(userId)
       : await FirestoreService.listAllAssessments();
 
     // Apply date filters if provided
@@ -90,6 +90,9 @@ export async function exportCSV(userId?: string, filters?: ExportFilters) {
     const header = [
       'Assessment ID',
       'Date Created',
+      'Building',
+      'Floor',
+      'Room',
       'Category',
       'Element',
       'Condition',
@@ -122,6 +125,9 @@ export async function exportCSV(userId?: string, filters?: ExportFilters) {
       const row = [
         csvEscape(assessment.id),
         csvEscape(formatDate(assessment.created_at)),
+        csvEscape(assessment.building || ''),
+        csvEscape(assessment.floor || assessment.floorLevel || ''),
+        csvEscape(assessment.room || ''),
         csvEscape(assessment.category),
         csvEscape(assessment.element),
         csvEscape(assessment.condition),
@@ -131,7 +137,7 @@ export async function exportCSV(userId?: string, filters?: ExportFilters) {
         csvEscape(assessment.latitude),
         csvEscape(assessment.longitude),
         csvEscape(assessment.notes),
-        csvEscape(assessment.photo_uri), // Firebase Storage URL - clickable in Excel/Sheets
+        csvEscape(assessment.photo_uri), // Server URL - clickable in Excel/Sheets
         csvEscape(assessment.userId),
       ];
       lines.push(row.join(','));
@@ -270,6 +276,9 @@ export async function importCSV(userId: string) {
         const priority = Number(row[idx('Priority')] || row[idx('priority')] || 1);
         const notes = row[idx('Notes')] || row[idx('notes')] || '';
         const photo_uri = row[idx('Photo URL')] || row[idx('photo_uri')] || '';
+        const building = row[idx('Building')] || row[idx('building')] || '';
+        const floor = row[idx('Floor')] || row[idx('floor')] || row[idx('Floor/Level')] || row[idx('floorLevel')] || '';
+        const room = row[idx('Room')] || row[idx('room')] || '';
 
         // Validate required fields
         if (!category || !element || !photo_uri) {
@@ -278,9 +287,12 @@ export async function importCSV(userId: string) {
           continue;
         }
 
-        // Create assessment in Firestore
+        // Create assessment in API
         await FirestoreService.createAssessment({
           userId,
+          building,
+          floor,
+          room,
           category,
           element,
           condition,
