@@ -200,7 +200,7 @@ export default function UserManagement() {
 
   const handleDeleteUser = async (targetUser: UserProfile) => {
     // Prevent deleting yourself
-    if (targetUser.id === user?.uid) {
+    if (targetUser.id === user?.id) {
       Alert.alert('Error', 'You cannot delete your own account');
       return;
     }
@@ -341,7 +341,7 @@ export default function UserManagement() {
                 setMenuVisibleUserId(null);
                 handleDeleteUser(item);
               }}
-              disabled={item.id === user?.uid}
+              disabled={item.id === user?.id}
             >
               <Ionicons name="trash-outline" size={20} color="#ffffff" />
               <ThemedText style={[styles.menuItemText, { color: '#ffffff', fontWeight: '700' }]}>
