@@ -321,7 +321,7 @@ app.post('/assessments', authenticate, assessmentUpload.single('photo'), async (
     if (!category || !element || !condition || !priority) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
-    const id = `${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Date.now()}`;
+    const id = uuidv4();
     const photoBlob = req.file ? req.file.buffer : null;
     const photoMime = req.file ? req.file.mimetype : null;
     const photoPath = req.file ? '' : (photo_uri || '');
