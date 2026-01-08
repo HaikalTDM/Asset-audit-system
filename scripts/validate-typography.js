@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Simple validation script for responsive typography
  * Checks that font sizes are appropriate for different screen sizes
  */
@@ -63,7 +63,7 @@ const ResponsiveUtils = {
 
 // Test function
 function validateTypography() {
-  console.log('🔍 Validating Responsive Typography...\n');
+  console.log(' Validating Responsive Typography...\n');
   
   // Test different screen sizes
   const testSizes = [
@@ -74,7 +74,7 @@ function validateTypography() {
   ];
   
   testSizes.forEach(size => {
-    console.log(`📱 Testing ${size.name} (${size.width}x${size.height})`);
+    console.log(` Testing ${size.name} (${size.width}x${size.height})`);
     
     // Update mock dimensions
     mockDimensions.width = size.width;
@@ -104,24 +104,24 @@ function validateTypography() {
     console.log(`  Title font size: ${titleSize}px`);
     console.log(`  Container width: ${containerWidth}px`);
     console.log(`  Estimated max chars: ${maxChars}`);
-    console.log(`  "Create Account" (14 chars): ${maxChars >= 14 ? '✅ Fits' : '❌ Too large'}`);
+    console.log(`  "Create Account" (14 chars): ${maxChars >= 14 ? 'Fits' : 'Too large'}`);
     console.log('');
   });
   
   // Test edge cases
-  console.log('🧪 Testing Edge Cases...\n');
+  console.log(' Testing Edge Cases...\n');
   
   // Very wide screen
   mockDimensions.width = 2560;
   const veryLargeFont = ResponsiveUtils.fontSize(Typography.responsive.display);
-  console.log(`Very wide screen font size: ${veryLargeFont}px (should be ≤ 48px): ${veryLargeFont <= 48 ? '✅' : '❌'}`);
+  console.log(`Very wide screen font size: ${veryLargeFont}px (should be <= 48px): ${veryLargeFont <= 48 ? 'OK' : 'FAIL'}`);
   
   // Very narrow screen
   mockDimensions.width = 240;
   const verySmallFont = ResponsiveUtils.fontSize(Typography.responsive.caption);
-  console.log(`Very narrow screen font size: ${verySmallFont}px (should be ≥ 12px): ${verySmallFont >= 12 ? '✅' : '❌'}`);
+  console.log(`Very narrow screen font size: ${verySmallFont}px (should be >= 12px): ${verySmallFont >= 12 ? 'OK' : 'FAIL'}`);
   
-  console.log('\n✅ Typography validation complete!');
+  console.log('\n Typography validation complete!');
 }
 
 // Run validation

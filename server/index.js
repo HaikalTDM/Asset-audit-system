@@ -106,10 +106,11 @@ app.get('/health', (req, res) => res.json({ ok: true }));
 // Auth
 app.post('/auth/register', async (req, res) => {
   try {
-    const { email, password, displayName } = req.body || {};
-    if (!email || !password || !displayName) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
+    return res.status(403).json({ error: 'Registration disabled. Contact an admin.' });
+    // const { email, password, displayName } = req.body || {};
+    // if (!email || !password || !displayName) {
+    //   return res.status(400).json({ error: 'Missing required fields' });
+    // }
     const existing = await getUserByEmail(email);
     if (existing) return res.status(409).json({ error: 'Email already exists' });
     const id = uuidv4();

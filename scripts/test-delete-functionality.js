@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Test script to validate assessment delete functionality
  * This script checks that staff users can delete their own assessments
  */
@@ -7,10 +7,10 @@ const fs = require('fs');
 const path = require('path');
 
 function testDeleteFunctionality() {
-  console.log('🗑️  Testing Assessment Delete Functionality...\n');
+  console.log('  Testing Assessment Delete Functionality...\n');
   
   // Test 1: Check History Tab implementation
-  console.log('📋 Testing History Tab Component...');
+  console.log(' Testing History Tab Component...');
   
   const historyPath = path.join(__dirname, '..', 'app', '(app)', '(tabs)', 'history.tsx');
   const historyContent = fs.readFileSync(historyPath, 'utf8');
@@ -44,25 +44,25 @@ function testDeleteFunctionality() {
   console.log('  Checking required imports:');
   requiredImports.forEach(importName => {
     const hasImport = historyContent.includes(importName);
-    console.log(`    ${importName}: ${hasImport ? '✅' : '❌'}`);
+    console.log(`    ${importName}: ${hasImport ? 'OK' : 'FAIL'}`);
   });
   
   // Check delete features
   console.log('  Checking delete functionality:');
   deleteFeatures.forEach(feature => {
     const hasFeature = historyContent.includes(feature);
-    console.log(`    ${feature}: ${hasFeature ? '✅' : '❌'}`);
+    console.log(`    ${feature}: ${hasFeature ? 'OK' : 'FAIL'}`);
   });
   
   // Check UI features
   console.log('  Checking UI implementation:');
   uiFeatures.forEach(feature => {
     const hasFeature = historyContent.includes(feature);
-    console.log(`    ${feature}: ${hasFeature ? '✅' : '❌'}`);
+    console.log(`    ${feature}: ${hasFeature ? 'OK' : 'FAIL'}`);
   });
   
   // Test 2: Check FirestoreService delete method
-  console.log('\n🔥 Testing FirestoreService Delete Method...');
+  console.log('\n Testing FirestoreService Delete Method...');
 
   const firestorePath = path.join(__dirname, '..', 'lib', 'firestore.ts');
   const firestoreContent = fs.readFileSync(firestorePath, 'utf8');
@@ -80,11 +80,11 @@ function testDeleteFunctionality() {
   
   firestoreFeatures.forEach(feature => {
     const hasFeature = firestoreContent.includes(feature.pattern);
-    console.log(`  ${feature.name}: ${hasFeature ? '✅' : '❌'}`);
+    console.log(`  ${feature.name}: ${hasFeature ? 'OK' : 'FAIL'}`);
   });
 
   // Test 2.5: Check ImageUploadService delete methods
-  console.log('\n🖼️  Testing ImageUploadService Delete Methods...');
+  console.log('\n  Testing ImageUploadService Delete Methods...');
 
   const imageUploadPath = path.join(__dirname, '..', 'lib', 'imageUpload.ts');
   const imageUploadContent = fs.readFileSync(imageUploadPath, 'utf8');
@@ -102,11 +102,11 @@ function testDeleteFunctionality() {
 
   imageDeleteFeatures.forEach(feature => {
     const hasFeature = imageUploadContent.includes(feature.pattern);
-    console.log(`  ${feature.name}: ${hasFeature ? '✅' : '❌'}`);
+    console.log(`  ${feature.name}: ${hasFeature ? 'OK' : 'FAIL'}`);
   });
   
   // Test 3: Check styling implementation
-  console.log('\n🎨 Testing Delete Button Styling...');
+  console.log('\n Testing Delete Button Styling...');
   
   const stylingFeatures = [
     { name: 'Delete button container', pattern: 'deleteButton:' },
@@ -121,16 +121,16 @@ function testDeleteFunctionality() {
   
   stylingFeatures.forEach(feature => {
     const hasFeature = historyContent.includes(feature.pattern);
-    console.log(`  ${feature.name}: ${hasFeature ? '✅' : '❌'}`);
+    console.log(`  ${feature.name}: ${hasFeature ? 'OK' : 'FAIL'}`);
   });
   
   // Test 4: Check user experience features
-  console.log('\n👤 Testing User Experience Features...');
+  console.log('\n Testing User Experience Features...');
   
   const uxFeatures = [
     { name: 'Confirmation dialog', pattern: 'Alert.alert(' },
     { name: 'Descriptive confirmation message', pattern: 'Are you sure you want to delete' },
-    { name: 'Shows assessment details', pattern: '${assessment.category} — ${assessment.element}' },
+    { name: 'Shows assessment details', pattern: '${assessment.category} - ${assessment.element}' },
     { name: 'Cancel option', pattern: 'text: \'Cancel\', style: \'cancel\'' },
     { name: 'Destructive delete option', pattern: 'style: \'destructive\'' },
     { name: 'Loading state during delete', pattern: 'setDeletingId(assessment.id)' },
@@ -142,11 +142,11 @@ function testDeleteFunctionality() {
   
   uxFeatures.forEach(feature => {
     const hasFeature = historyContent.includes(feature.pattern);
-    console.log(`  ${feature.name}: ${hasFeature ? '✅' : '❌'}`);
+    console.log(`  ${feature.name}: ${hasFeature ? 'OK' : 'FAIL'}`);
   });
   
   // Test 5: Check accessibility features
-  console.log('\n♿ Testing Accessibility Features...');
+  console.log('\n Testing Accessibility Features...');
   
   const accessibilityFeatures = [
     { name: 'Delete button accessibility label', pattern: 'accessibilityLabel="Delete assessment"' },
@@ -158,11 +158,11 @@ function testDeleteFunctionality() {
   
   accessibilityFeatures.forEach(feature => {
     const hasFeature = historyContent.includes(feature.pattern);
-    console.log(`  ${feature.name}: ${hasFeature ? '✅' : '❌'}`);
+    console.log(`  ${feature.name}: ${hasFeature ? 'OK' : 'FAIL'}`);
   });
   
   // Test 6: Check layout and interaction patterns
-  console.log('\n📱 Testing Layout and Interaction Patterns...');
+  console.log('\n Testing Layout and Interaction Patterns...');
   
   const layoutFeatures = [
     { name: 'Separate pressable areas', pattern: 'itemPressable' },
@@ -176,38 +176,38 @@ function testDeleteFunctionality() {
   
   layoutFeatures.forEach(feature => {
     const hasFeature = historyContent.includes(feature.pattern);
-    console.log(`  ${feature.name}: ${hasFeature ? '✅' : '❌'}`);
+    console.log(`  ${feature.name}: ${hasFeature ? 'OK' : 'FAIL'}`);
   });
   
-  console.log('\n🎯 Summary:');
+  console.log('\n Summary:');
   console.log('The assessment delete functionality includes:');
-  console.log('  ✅ Visible delete button with trash icon for each assessment');
-  console.log('  ✅ Confirmation dialog with assessment details');
-  console.log('  ✅ Complete deletion: Firestore document AND Firebase Storage image');
-  console.log('  ✅ Proper error handling and user feedback');
-  console.log('  ✅ Loading states and optimistic UI updates');
-  console.log('  ✅ Accessibility compliance with labels and roles');
-  console.log('  ✅ Professional styling with proper touch targets');
-  console.log('  ✅ Separate interaction areas for open vs delete');
-  console.log('  ✅ Integration with FirestoreService for data persistence');
-  console.log('  ✅ Image cleanup to prevent orphaned files in storage');
+  console.log('   Visible delete button with trash icon for each assessment');
+  console.log('   Confirmation dialog with assessment details');
+  console.log('   Complete deletion: Firestore document AND Firebase Storage image');
+  console.log('   Proper error handling and user feedback');
+  console.log('   Loading states and optimistic UI updates');
+  console.log('   Accessibility compliance with labels and roles');
+  console.log('   Professional styling with proper touch targets');
+  console.log('   Separate interaction areas for open vs delete');
+  console.log('   Integration with FirestoreService for data persistence');
+  console.log('   Image cleanup to prevent orphaned files in storage');
   
-  console.log('\n🚀 User Experience Flow:');
+  console.log('\n User Experience Flow:');
   console.log('  1. User sees assessment list with Open and Delete buttons');
-  console.log('  2. User taps delete button → Confirmation dialog appears');
+  console.log('  2. User taps delete button  Confirmation dialog appears');
   console.log('  3. Dialog shows assessment details and warning message');
-  console.log('  4. User confirms → Assessment AND image deleted with loading feedback');
+  console.log('  4. User confirms  Assessment AND image deleted with loading feedback');
   console.log('  5. List updates immediately with optimistic UI');
   console.log('  6. Error handling provides clear feedback if deletion fails');
   console.log('  7. Storage cleanup prevents orphaned image files');
 
-  console.log('\n✅ Test completed! Staff users can now completely delete their assessments (data + images).');
+  console.log('\n Test completed! Staff users can now completely delete their assessments (data + images).');
 }
 
 // Run the test
 try {
   testDeleteFunctionality();
 } catch (error) {
-  console.error('❌ Test failed:', error.message);
+  console.error(' Test failed:', error.message);
   process.exit(1);
 }

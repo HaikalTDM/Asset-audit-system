@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Modal, Pressable, StyleSheet, View, Text } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -70,7 +70,7 @@ export function ZoomImageModal({ uri, visible, onClose }: { uri: string; visible
             <Ionicons name="information-circle-outline" size={16} color="#ffffff" style={styles.instructionsIcon} />
             <View style={styles.instructionsText}>
               <View style={styles.instructionTextRow}>
-                <Text style={styles.instructionLabel}>Pinch to zoom • Double tap to zoom • Tap to close</Text>
+                <Text style={styles.instructionLabel}>Pinch to zoom - Double tap to zoom - Tap to close</Text>
               </View>
             </View>
           </View>

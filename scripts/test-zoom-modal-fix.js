@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Test script to validate ZoomImageModal close button fix
  * This script checks that the modal has proper close button functionality
  */
@@ -7,10 +7,10 @@ const fs = require('fs');
 const path = require('path');
 
 function testZoomModalFix() {
-  console.log('🔍 Testing ZoomImageModal Close Button Fix...\n');
+  console.log(' Testing ZoomImageModal Close Button Fix...\n');
   
   // Test 1: Check ZoomImageModal implementation
-  console.log('🖼️  Testing ZoomImageModal Component...');
+  console.log('  Testing ZoomImageModal Component...');
 
   const modalPath = path.join(__dirname, '..', 'components', 'ui', 'ZoomImageModal.tsx');
   const modalContent = fs.readFileSync(modalPath, 'utf8');
@@ -50,32 +50,32 @@ function testZoomModalFix() {
   console.log('  Checking required imports:');
   requiredImports.forEach(importName => {
     const hasImport = modalContent.includes(importName);
-    console.log(`    ${importName}: ${hasImport ? '✅' : '❌'}`);
+    console.log(`    ${importName}: ${hasImport ? 'OK' : 'FAIL'}`);
   });
   
   // Check close button features
   console.log('  Checking close button features:');
   closeButtonFeatures.forEach(feature => {
     const hasFeature = modalContent.includes(feature);
-    console.log(`    ${feature}: ${hasFeature ? '✅' : '❌'}`);
+    console.log(`    ${feature}: ${hasFeature ? 'OK' : 'FAIL'}`);
   });
   
   // Check safe area features
   console.log('  Checking safe area integration:');
   safeAreaFeatures.forEach(feature => {
     const hasFeature = modalContent.includes(feature);
-    console.log(`    ${feature}: ${hasFeature ? '✅' : '❌'}`);
+    console.log(`    ${feature}: ${hasFeature ? 'OK' : 'FAIL'}`);
   });
   
   // Check instruction features
   console.log('  Checking user instructions:');
   instructionFeatures.forEach(feature => {
     const hasFeature = modalContent.includes(feature);
-    console.log(`    ${feature}: ${hasFeature ? '✅' : '❌'}`);
+    console.log(`    ${feature}: ${hasFeature ? 'OK' : 'FAIL'}`);
   });
   
   // Test 2: Check styling implementation
-  console.log('\n🎨 Testing Modal Styling...');
+  console.log('\n Testing Modal Styling...');
   
   const stylingFeatures = [
     { name: 'Close button positioning', pattern: 'position: \'absolute\'' },
@@ -90,11 +90,11 @@ function testZoomModalFix() {
   
   stylingFeatures.forEach(feature => {
     const hasFeature = modalContent.includes(feature.pattern);
-    console.log(`  ${feature.name}: ${hasFeature ? '✅' : '❌'}`);
+    console.log(`  ${feature.name}: ${hasFeature ? 'OK' : 'FAIL'}`);
   });
   
   // Test 3: Check accessibility features
-  console.log('\n♿ Testing Accessibility Features...');
+  console.log('\n Testing Accessibility Features...');
   
   const accessibilityFeatures = [
     { name: 'Close button accessibility label', pattern: 'accessibilityLabel="Close image viewer"' },
@@ -106,11 +106,11 @@ function testZoomModalFix() {
   
   accessibilityFeatures.forEach(feature => {
     const hasFeature = modalContent.includes(feature.pattern);
-    console.log(`  ${feature.name}: ${hasFeature ? '✅' : '❌'}`);
+    console.log(`  ${feature.name}: ${hasFeature ? 'OK' : 'FAIL'}`);
   });
   
   // Test 4: Check gesture functionality preservation
-  console.log('\n👆 Testing Gesture Functionality...');
+  console.log('\n Testing Gesture Functionality...');
   
   const gestureFeatures = [
     { name: 'Pinch gesture', pattern: 'Gesture.Pinch()' },
@@ -124,11 +124,11 @@ function testZoomModalFix() {
   
   gestureFeatures.forEach(feature => {
     const hasFeature = modalContent.includes(feature.pattern);
-    console.log(`  ${feature.name}: ${hasFeature ? '✅' : '❌'}`);
+    console.log(`  ${feature.name}: ${hasFeature ? 'OK' : 'FAIL'}`);
   });
   
   // Test 5: Check Assessment Details integration
-  console.log('\n📋 Testing Assessment Details Integration...');
+  console.log('\n Testing Assessment Details Integration...');
   
   const assessmentDetailsPath = path.join(__dirname, '..', 'app', '(app)', 'history', '[id].tsx');
   const assessmentDetailsContent = fs.readFileSync(assessmentDetailsPath, 'utf8');
@@ -144,11 +144,11 @@ function testZoomModalFix() {
   
   integrationFeatures.forEach(feature => {
     const hasFeature = assessmentDetailsContent.includes(feature.pattern);
-    console.log(`  ${feature.name}: ${hasFeature ? '✅' : '❌'}`);
+    console.log(`  ${feature.name}: ${hasFeature ? 'OK' : 'FAIL'}`);
   });
   
   // Test 6: Check user experience improvements
-  console.log('\n🎯 Testing User Experience Improvements...');
+  console.log('\n Testing User Experience Improvements...');
   
   const uxImprovements = [
     { name: 'Visible close button', pattern: 'closeButton' },
@@ -163,34 +163,34 @@ function testZoomModalFix() {
   
   uxImprovements.forEach(improvement => {
     const hasImprovement = modalContent.includes(improvement.pattern);
-    console.log(`  ${improvement.name}: ${hasImprovement ? '✅' : '❌'}`);
+    console.log(`  ${improvement.name}: ${hasImprovement ? 'OK' : 'FAIL'}`);
   });
   
-  console.log('\n🎯 Summary:');
+  console.log('\n Summary:');
   console.log('The ZoomImageModal close button fix includes:');
-  console.log('  ✅ Visible close button with X icon in top-right corner');
-  console.log('  ✅ Safe area inset integration for modern devices');
-  console.log('  ✅ Multiple ways to close: button tap, background tap, device back');
-  console.log('  ✅ Professional styling with shadows and proper contrast');
-  console.log('  ✅ Accessibility compliance with labels and roles');
-  console.log('  ✅ User instructions for gesture controls');
-  console.log('  ✅ Preserved all existing zoom and pan functionality');
-  console.log('  ✅ Consistent design with app\'s icon and styling patterns');
+  console.log('   Visible close button with X icon in top-right corner');
+  console.log('   Safe area inset integration for modern devices');
+  console.log('   Multiple ways to close: button tap, background tap, device back');
+  console.log('   Professional styling with shadows and proper contrast');
+  console.log('   Accessibility compliance with labels and roles');
+  console.log('   User instructions for gesture controls');
+  console.log('   Preserved all existing zoom and pan functionality');
+  console.log('   Consistent design with app\'s icon and styling patterns');
   
-  console.log('\n🚀 User Experience Flow:');
-  console.log('  1. User taps "View Photo" → Modal opens with image');
+  console.log('\n User Experience Flow:');
+  console.log('  1. User taps "View Photo"  Modal opens with image');
   console.log('  2. User sees clear X button in top-right corner');
   console.log('  3. User can close via: X button, tap background, or device back');
   console.log('  4. User can still zoom, pan, and double-tap as before');
   console.log('  5. Instructions help users understand available gestures');
   
-  console.log('\n✅ Test completed! Photo viewing modal should now have proper close functionality.');
+  console.log('\n Test completed! Photo viewing modal should now have proper close functionality.');
 }
 
 // Run the test
 try {
   testZoomModalFix();
 } catch (error) {
-  console.error('❌ Test failed:', error.message);
+  console.error(' Test failed:', error.message);
   process.exit(1);
 }

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Test script to validate the complete assessment workflow for staff users
  * This script checks each step of the assessment flow from capture to save to history
  */
@@ -7,10 +7,10 @@ const fs = require('fs');
 const path = require('path');
 
 function testAssessmentWorkflow() {
-  console.log('🔄 Testing Complete Assessment Workflow...\n');
+  console.log(' Testing Complete Assessment Workflow...\n');
   
   // Test 1: Capture Tab - Photo Capture with Location
-  console.log('📸 Testing Step 1: Photo Capture with Location...');
+  console.log(' Testing Step 1: Photo Capture with Location...');
   
   const capturePath = path.join(__dirname, '..', 'app', '(app)', '(tabs)', 'capture.tsx');
   const captureContent = fs.readFileSync(capturePath, 'utf8');
@@ -29,11 +29,11 @@ function testAssessmentWorkflow() {
   
   captureFeatures.forEach(feature => {
     const hasFeature = captureContent.includes(feature.pattern);
-    console.log(`  ${feature.name}: ${hasFeature ? '✅' : '❌'}`);
+    console.log(`  ${feature.name}: ${hasFeature ? 'OK' : 'FAIL'}`);
   });
   
   // Test 2: Assessment Form
-  console.log('\n📋 Testing Step 2: Assessment Form...');
+  console.log('\n Testing Step 2: Assessment Form...');
   
   const assessPath = path.join(__dirname, '..', 'app', '(app)', '(tabs)', 'assess.tsx');
   const assessContent = fs.readFileSync(assessPath, 'utf8');
@@ -53,11 +53,11 @@ function testAssessmentWorkflow() {
   
   assessFeatures.forEach(feature => {
     const hasFeature = assessContent.includes(feature.pattern);
-    console.log(`  ${feature.name}: ${hasFeature ? '✅' : '❌'}`);
+    console.log(`  ${feature.name}: ${hasFeature ? 'OK' : 'FAIL'}`);
   });
   
   // Test 3: Review and Save
-  console.log('\n💾 Testing Step 3: Review and Save...');
+  console.log('\n Testing Step 3: Review and Save...');
   
   const reviewPath = path.join(__dirname, '..', 'app', '(app)', 'review.tsx');
   const reviewContent = fs.readFileSync(reviewPath, 'utf8');
@@ -76,11 +76,11 @@ function testAssessmentWorkflow() {
   
   reviewFeatures.forEach(feature => {
     const hasFeature = reviewContent.includes(feature.pattern);
-    console.log(`  ${feature.name}: ${hasFeature ? '✅' : '❌'}`);
+    console.log(`  ${feature.name}: ${hasFeature ? 'OK' : 'FAIL'}`);
   });
   
   // Test 4: Navigation Structure
-  console.log('\n🧭 Testing Step 4: Navigation Structure...');
+  console.log('\n Testing Step 4: Navigation Structure...');
   
   const stackLayoutPath = path.join(__dirname, '..', 'app', '(app)', '_layout.tsx');
   const stackLayoutContent = fs.readFileSync(stackLayoutPath, 'utf8');
@@ -95,11 +95,11 @@ function testAssessmentWorkflow() {
   
   navigationFeatures.forEach(feature => {
     const hasFeature = stackLayoutContent.includes(feature.pattern);
-    console.log(`  ${feature.name}: ${hasFeature ? '✅' : '❌'}`);
+    console.log(`  ${feature.name}: ${hasFeature ? 'OK' : 'FAIL'}`);
   });
   
   // Test 5: History Tab Integration
-  console.log('\n📜 Testing Step 5: History Tab Integration...');
+  console.log('\n Testing Step 5: History Tab Integration...');
   
   const historyPath = path.join(__dirname, '..', 'app', '(app)', '(tabs)', 'history.tsx');
   const historyContent = fs.readFileSync(historyPath, 'utf8');
@@ -116,11 +116,11 @@ function testAssessmentWorkflow() {
   
   historyFeatures.forEach(feature => {
     const hasFeature = historyContent.includes(feature.pattern);
-    console.log(`  ${feature.name}: ${hasFeature ? '✅' : '❌'}`);
+    console.log(`  ${feature.name}: ${hasFeature ? 'OK' : 'FAIL'}`);
   });
   
   // Test 6: Data Persistence
-  console.log('\n💾 Testing Step 6: Data Persistence...');
+  console.log('\n Testing Step 6: Data Persistence...');
   
   const firestorePath = path.join(__dirname, '..', 'lib', 'firestore.ts');
   const firestoreContent = fs.readFileSync(firestorePath, 'utf8');
@@ -137,11 +137,11 @@ function testAssessmentWorkflow() {
   
   persistenceFeatures.forEach(feature => {
     const hasFeature = firestoreContent.includes(feature.pattern);
-    console.log(`  ${feature.name}: ${hasFeature ? '✅' : '❌'}`);
+    console.log(`  ${feature.name}: ${hasFeature ? 'OK' : 'FAIL'}`);
   });
   
   // Test 7: User Experience Flow
-  console.log('\n🎯 Testing Step 7: User Experience Flow...');
+  console.log('\n Testing Step 7: User Experience Flow...');
   
   const uxChecks = [
     { 
@@ -174,20 +174,20 @@ function testAssessmentWorkflow() {
   uxChecks.forEach(check => {
     const content = fs.readFileSync(check.file, 'utf8');
     const hasFeature = content.includes(check.pattern);
-    console.log(`  ${check.name}: ${hasFeature ? '✅' : '❌'}`);
+    console.log(`  ${check.name}: ${hasFeature ? 'OK' : 'FAIL'}`);
   });
   
-  console.log('\n🎯 Assessment Workflow Summary:');
+  console.log('\n Assessment Workflow Summary:');
   console.log('The complete assessment workflow includes:');
-  console.log('  ✅ Step 1: Photo capture with automatic GPS location retrieval');
-  console.log('  ✅ Step 2: Comprehensive assessment form with category/element selection');
-  console.log('  ✅ Step 3: Review summary with matrix scoring and save functionality');
-  console.log('  ✅ Step 4: Post-save navigation directly to History tab');
-  console.log('  ✅ Step 5: Home button navigation for easy dashboard access');
-  console.log('  ✅ Step 6: Complete data persistence with image upload to Firebase');
-  console.log('  ✅ Step 7: Immediate visibility of new assessment in history list');
+  console.log('   Step 1: Photo capture with automatic GPS location retrieval');
+  console.log('   Step 2: Comprehensive assessment form with category/element selection');
+  console.log('   Step 3: Review summary with matrix scoring and save functionality');
+  console.log('   Step 4: Post-save navigation directly to History tab');
+  console.log('   Step 5: Home button navigation for easy dashboard access');
+  console.log('   Step 6: Complete data persistence with image upload to Firebase');
+  console.log('   Step 7: Immediate visibility of new assessment in history list');
   
-  console.log('\n🚀 Complete User Experience Flow:');
+  console.log('\n Complete User Experience Flow:');
   console.log('  1. Staff user navigates to Capture tab');
   console.log('  2. User chooses "Use Camera" or "Upload Photo"');
   console.log('  3. GPS location is automatically retrieved and stored');
@@ -200,13 +200,13 @@ function testAssessmentWorkflow() {
   console.log('  10. New assessment appears immediately in the history list');
   console.log('  11. Home button provides easy navigation back to dashboard');
   
-  console.log('\n✅ Test completed! Complete assessment workflow is properly implemented.');
+  console.log('\n Test completed! Complete assessment workflow is properly implemented.');
 }
 
 // Run the test
 try {
   testAssessmentWorkflow();
 } catch (error) {
-  console.error('❌ Test failed:', error.message);
+  console.error(' Test failed:', error.message);
   process.exit(1);
 }
