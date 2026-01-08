@@ -230,7 +230,7 @@ export default function SyncStatusScreen() {
               >
                 <View style={styles.assessmentInfo}>
                   <ThemedText style={styles.assessmentTitle}>
-                    {assessment.assessmentData.category} — {assessment.assessmentData.element}
+                    {assessment.assessmentData.category}  -  {assessment.assessmentData.element}
                   </ThemedText>
                   <ThemedText style={styles.assessmentDate}>
                     {new Date(assessment.createdAt).toLocaleString()}
@@ -258,7 +258,7 @@ export default function SyncStatusScreen() {
               >
                 <View style={styles.assessmentInfo}>
                   <ThemedText style={styles.assessmentTitle}>
-                    {assessment.assessmentData.category} — {assessment.assessmentData.element}
+                    {assessment.assessmentData.category}  -  {assessment.assessmentData.element}
                   </ThemedText>
                   <ThemedText style={styles.assessmentDate}>
                     {new Date(assessment.createdAt).toLocaleString()}

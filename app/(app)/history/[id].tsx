@@ -138,7 +138,7 @@ export default function AssessmentDetailsScreen() {
       <>
         <Stack.Screen options={{ title: String(id) }} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <ThemedText>Loading…</ThemedText>
+          <ThemedText>Loading...</ThemedText>
         </View>
       </>
     );
@@ -204,7 +204,7 @@ export default function AssessmentDetailsScreen() {
             <View style={styles.scoreInfo}>
               <ThemedText style={[styles.scoreLabel, { color: g.color }]}>Overall Score</ThemedText>
               <ThemedText style={[styles.scoreValue, { color: g.color }]}>
-                {total} — {g.label}
+                {total}  -  {g.label}
               </ThemedText>
             </View>
           </View>
@@ -533,7 +533,7 @@ export default function AssessmentDetailsScreen() {
             {/* Assessment Info */}
             <View style={[styles.deleteModalInfo, { backgroundColor: Colors[scheme].background }]}>
               <ThemedText style={styles.deleteModalInfoText}>
-                {item.category} — {item.element}
+                {item.category}  -  {item.element}
               </ThemedText>
               <ThemedText style={styles.deleteModalInfoDate}>
                 {new Date(item.created_at).toLocaleDateString()}

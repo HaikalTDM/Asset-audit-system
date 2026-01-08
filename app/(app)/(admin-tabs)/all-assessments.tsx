@@ -125,7 +125,7 @@ export default function AllAssessments() {
       <Image source={{ uri: item.photo_uri }} style={styles.thumbnail} />
       <View style={styles.assessmentInfo}>
         <ThemedText style={styles.assessmentTitle}>
-          {item.category} — {item.element}
+          {item.category}  -  {item.element}
         </ThemedText>
         <ThemedText style={styles.assessmentUser}>
           By: {getUserDisplayName(item.userId)}

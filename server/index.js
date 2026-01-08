@@ -106,7 +106,7 @@ app.get('/health', (req, res) => res.json({ ok: true }));
 // Auth
 app.post('/auth/register', async (req, res) => {
   try {
-    const { email, password, displayName, role } = req.body || {};
+    const { email, password, displayName } = req.body || {};
     if (!email || !password || !displayName) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -115,7 +115,7 @@ app.post('/auth/register', async (req, res) => {
     const id = uuidv4();
     const now = Date.now();
     const passwordHash = await bcrypt.hash(password, 10);
-    const userRole = role === 'admin' ? 'admin' : 'staff';
+    const userRole = 'staff';
     await pool.query(
       `INSERT INTO users (id, email, password_hash, display_name, role, is_active, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,

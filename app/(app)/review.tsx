@@ -81,7 +81,7 @@ export default function Review() {
         // Online: Upload to API
         setUploadingImage(true);
         await FirestoreService.createAssessmentWithImageUpload(assessmentData);
-        console.log('✅ Assessment saved to API successfully');
+        console.log('Assessment saved to API successfully');
         
         setShowSuccessModal(true);
       } else {
@@ -90,7 +90,7 @@ export default function Review() {
         await saveOfflineAssessment(assessmentData, [
           { id: photoId, uri: params.photoUri }
         ]);
-        console.log('✅ Assessment saved offline successfully');
+        console.log('Assessment saved offline successfully');
         
         // Refresh pending count
         await refreshPendingCount();
@@ -131,7 +131,7 @@ export default function Review() {
               photo_uri: params.photoUri,
               notes: params.notes || '',
             }, [{ id: photoId, uri: params.photoUri }]);
-            console.log('✅ Assessment saved offline as fallback');
+            console.log('Assessment saved offline as fallback');
             
             await refreshPendingCount();
             router.replace('/(app)/(tabs)/');
@@ -184,7 +184,7 @@ export default function Review() {
         </View>
         <View style={styles.riskInfo}>
           <ThemedText style={[styles.riskLevel, { color: riskInfo.color }]}>{riskInfo.level} Risk</ThemedText>
-          <ThemedText style={styles.riskFormula}>Condition ({condition}) × Priority ({priority})</ThemedText>
+          <ThemedText style={styles.riskFormula}>Condition ({condition}) x Priority ({priority})</ThemedText>
         </View>
       </View>
 

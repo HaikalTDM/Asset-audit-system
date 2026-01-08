@@ -23,43 +23,43 @@ export default function Home() {
 
   const load = React.useCallback(async () => {
     if (!user) {
-      console.log('📊 No user, skipping load');
+      console.log('No user, skipping load');
       return;
     }
 
-    console.log('📊 Loading assessments...');
+    console.log('Loading assessments...');
     const rows = await FirestoreService.listAssessments(user.id);
-    console.log('📊 Setting state: Total =', rows.length);
+    console.log('Setting state: Total =', rows.length);
     
     setTotal(rows.length);
     
     const start = new Date(); start.setHours(0,0,0,0);
     const end = new Date(); end.setHours(23,59,59,999);
     const todayCount = rows.filter((r: Assessment) => r.created_at >= start.getTime() && r.created_at <= end.getTime()).length;
-    console.log('📊 Setting state: Today =', todayCount);
+    console.log('Setting state: Today =', todayCount);
     setToday(todayCount);
     
     const recentAssessments = rows.slice(0, 3);
-    console.log('📊 Setting state: Recent =', recentAssessments.length, 'items');
+    console.log('Setting state: Recent =', recentAssessments.length, 'items');
     setRecent(recentAssessments);
     
-    console.log('📊 State update complete!');
+    console.log('State update complete!');
   }, [user]);
 
   React.useEffect(() => { 
-    console.log('📊 Home page mounted, loading data...');
+    console.log('Home page mounted, loading data...');
     load(); 
   }, [load]);
   
   useFocusEffect(
     React.useCallback(() => {
-      console.log('📊 Home page focused, reloading data...');
+      console.log('Home page focused, reloading data...');
       load();
     }, [load])
   );
 
   // Debug: Log current state values on every render
-  console.log('📊 RENDER - Current state: total=', total, 'today=', today, 'recent=', recent.length);
+  console.log('RENDER - Current state: total=', total, 'today=', today, 'recent=', recent.length);
 
   return (
     <View style={[styles.wrapper, { backgroundColor: Colors[scheme].background }]}>

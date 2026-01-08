@@ -318,8 +318,8 @@ export default function AdminDashboard() {
                     styles.matrixHeaderCell,
                     { backgroundColor: Colors[scheme].tint + '15', borderColor: Colors[scheme].border }
                   ]}>
-                    <ThemedText style={styles.matrixHeaderText}>Priority ↓</ThemedText>
-                    <ThemedText style={[styles.matrixHeaderText, { fontSize: 9, marginTop: 2 }]}>Condition →</ThemedText>
+                    <ThemedText style={styles.matrixHeaderText}>Priority (High to Low)</ThemedText>
+                    <ThemedText style={[styles.matrixHeaderText, { fontSize: 9, marginTop: 2 }]}>Condition (High to Low)</ThemedText>
                   </View>
                   {[5, 4, 3, 2, 1].map((condition) => (
                     <View 
@@ -407,7 +407,7 @@ export default function AdminDashboard() {
             <View style={[styles.legendContainer, { backgroundColor: Colors[scheme].background, borderTopColor: Colors[scheme].border }]}>
               <View style={styles.legendHeader}>
                 <Ionicons name="color-palette-outline" size={14} color={Colors[scheme].text} style={{ opacity: 0.7 }} />
-                <ThemedText style={styles.legendTitle}>Risk Level (Priority × Condition)</ThemedText>
+                <ThemedText style={styles.legendTitle}>Risk Level (Priority x Condition)</ThemedText>
               </View>
               <View style={styles.legendItems}>
                 <View style={styles.legendItem}>
@@ -471,7 +471,7 @@ export default function AdminDashboard() {
               <Image source={{ uri: assessment.photo_uri }} style={styles.assessmentThumb} />
               <View style={styles.assessmentInfo}>
                 <ThemedText style={styles.assessmentTitle}>
-                  {assessment.category} — {assessment.element}
+                  {assessment.category}  -  {assessment.element}
                 </ThemedText>
                 <ThemedText style={styles.assessmentDate}>
                   {new Date(assessment.created_at).toLocaleString()}
@@ -561,7 +561,7 @@ export default function AdminDashboard() {
                       />
                       <View style={styles.assessmentInfo}>
                         <ThemedText style={styles.assessmentTitle}>
-                          {item.category} — {item.element}
+                          {item.category}  -  {item.element}
                         </ThemedText>
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
                           <Ionicons name="time-outline" size={12} color={Colors[scheme].text} style={{ opacity: 0.5, marginRight: 4 }} />

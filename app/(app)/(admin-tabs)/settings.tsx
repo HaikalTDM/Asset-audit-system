@@ -178,7 +178,7 @@ export default function AdminSettings() {
   const onImport = async () => {
     try { 
       setBusy('import'); 
-      const result = await importZip(user?.uid);
+      const result = await importZip(user?.id);
       if (result) { 
         Alert.alert(
           'Import Complete', 
@@ -270,9 +270,9 @@ export default function AdminSettings() {
       <Card>
         <ThemedText style={styles.cardTitle}>Appearance</ThemedText>
         <View style={{ gap: 8 }}>
-          <Button title={preferred === 'light' ? 'Light •' : 'Light'} onPress={() => setPreferred('light')} variant={preferred === 'light' ? 'primary' : 'secondary'} />
-          <Button title={preferred === 'dark' ? 'Dark •' : 'Dark'} onPress={() => setPreferred('dark')} variant={preferred === 'dark' ? 'primary' : 'secondary'} />
-          <Button title={preferred === 'system' ? 'System •' : 'System'} onPress={() => setPreferred('system')} variant={preferred === 'system' ? 'primary' : 'secondary'} />
+          <Button title={preferred === 'light' ? 'Light *' : 'Light'} onPress={() => setPreferred('light')} variant={preferred === 'light' ? 'primary' : 'secondary'} />
+          <Button title={preferred === 'dark' ? 'Dark *' : 'Dark'} onPress={() => setPreferred('dark')} variant={preferred === 'dark' ? 'primary' : 'secondary'} />
+          <Button title={preferred === 'system' ? 'System *' : 'System'} onPress={() => setPreferred('system')} variant={preferred === 'system' ? 'primary' : 'secondary'} />
         </View>
       </Card>
 

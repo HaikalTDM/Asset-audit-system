@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { ActivityIndicator, View } from 'react-native';
 
-// 🚧 DEVELOPMENT MODE - Set to true to bypass login and go straight to admin dashboard
+// DEVELOPMENT MODE - Set to true to bypass login and go straight to admin dashboard
 const DEV_MODE = false; // Change to true to skip login during development
 
 export default function Index() {
@@ -13,7 +13,7 @@ export default function Index() {
     if (loading) return;
 
     if (DEV_MODE) {
-      console.log('⚠️ DEV_MODE enabled - bypassing auth check');
+      console.log('DEV_MODE enabled - bypassing auth check');
       router.replace('/(app)/(admin-tabs)');
       return;
     }

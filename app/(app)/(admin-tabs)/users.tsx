@@ -209,7 +209,7 @@ export default function UserManagement() {
 
     Alert.alert(
       'Delete User',
-      `Permanently delete ${targetUser.displayName}?\n\n⚠️ This will also delete:\n• ${assessmentCount} assessment${assessmentCount !== 1 ? 's' : ''}\n• All associated photos\n• All user data\n\nThis action CANNOT be undone!`,
+      `Permanently delete ${targetUser.displayName}?\n\nWARNING: This will also delete:\n- ${assessmentCount} assessment${assessmentCount !== 1 ? 's' : ''}\n- All associated photos\n- All user data\n\nThis action CANNOT be undone!`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -256,7 +256,7 @@ export default function UserManagement() {
             </View>
             
             <ThemedText style={styles.userDate}>
-              Joined: {new Date(item.created_at).toLocaleDateString()} • {userStats[item.id] || 0} assessment{(userStats[item.id] || 0) !== 1 ? 's' : ''}
+              Joined: {new Date(item.created_at).toLocaleDateString()} | {userStats[item.id] || 0} assessment{(userStats[item.id] || 0) !== 1 ? 's' : ''}
             </ThemedText>
           </View>
           
@@ -431,7 +431,7 @@ export default function UserManagement() {
             <View style={styles.modalHeader}>
               <ThemedText style={styles.modalTitle}>Create New User</ThemedText>
               <Button
-                title="✕"
+                title="Close"
                 onPress={() => setCreateModalVisible(false)}
                 variant="secondary"
                 style={styles.closeButton}

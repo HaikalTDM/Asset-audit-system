@@ -38,14 +38,14 @@ export default function HistoryTab() {
     if (!user) return;
 
     try {
-      console.log('📜 History page: Loading assessments for user:', user.id);
+      console.log('History page: Loading assessments for user:', user.id);
       setLoading(true);
       setError(null);
       const assessments = await FirestoreService.listAssessments(user.id);
-      console.log('📜 History page: Loaded', assessments.length, 'assessments');
+      console.log('History page: Loaded', assessments.length, 'assessments');
       setRows(assessments);
     } catch (err) {
-      console.error('❌ History page: Error loading assessments:', err);
+      console.error('History page: Error loading assessments:', err);
       setError('Failed to load assessments. Please try again.');
     } finally {
       setLoading(false);
@@ -55,7 +55,7 @@ export default function HistoryTab() {
   // Use useFocusEffect to reload data when tab is focused
   useFocusEffect(
     React.useCallback(() => {
-      console.log('📜 History page focused, reloading...');
+      console.log('History page focused, reloading...');
       load();
     }, [load])
   );
@@ -371,7 +371,7 @@ export default function HistoryTab() {
               <Image source={{ uri: item.photo_uri }} style={styles.thumbnail} />
               <View style={styles.cardContent}>
                 <ThemedText style={styles.cardTitle} numberOfLines={1}>
-                  {item.category} — {item.element}
+                  {item.category}  -  {item.element}
                 </ThemedText>
                 <View style={styles.cardMeta}>
                   <Ionicons name="calendar-outline" size={14} color={Colors[scheme].text} style={{ opacity: 0.6 }} />

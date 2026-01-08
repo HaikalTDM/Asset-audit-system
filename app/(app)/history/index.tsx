@@ -53,7 +53,7 @@ export default function HistoryList() {
             <Pressable style={styles.row} onPress={() => router.push({ pathname: '/(app)/history/[id]', params: { id: item.id } })}>
               <Image source={{ uri: item.photo_uri }} style={styles.thumb} />
               <View style={{ flex: 1 }}>
-                <ThemedText style={{ fontWeight: '600' }}>{item.category} — {item.element}</ThemedText>
+                <ThemedText style={{ fontWeight: '600' }}>{item.category}  -  {item.element}</ThemedText>
                 <ThemedText style={{ opacity: 0.8 }}>{new Date(item.created_at).toLocaleString()}</ThemedText>
               </View>
               <Button title="Open" onPress={() => router.push({ pathname: '/(app)/history/[id]', params: { id: item.id } })} variant="secondary" />
