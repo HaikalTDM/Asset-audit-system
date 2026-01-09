@@ -69,12 +69,20 @@ export default function StaffAssess() {
     });
   };
 
-  const scoreMeta = (v: number) => {
+  const conditionMeta = (v: number) => {
     if (v === 1) return { label: 'Excellent', color: '#2563eb' };
     if (v === 2) return { label: 'Good', color: '#0ea5e9' };
     if (v === 3) return { label: 'Plan', color: '#f59e0b' };
     if (v === 4) return { label: 'Poor', color: '#fb923c' };
     return { label: 'Replace', color: '#ef4444' };
+  };
+
+  const priorityMeta = (v: number) => {
+    if (v === 1) return { label: 'Very Low', color: '#2563eb' };
+    if (v === 2) return { label: 'Low', color: '#0ea5e9' };
+    if (v === 3) return { label: 'Medium', color: '#f59e0b' };
+    if (v === 4) return { label: 'High', color: '#fb923c' };
+    return { label: 'Very High', color: '#ef4444' };
   };
 
   const createdAtLabel = new Date(state.createdAt).toLocaleString();
@@ -116,42 +124,42 @@ export default function StaffAssess() {
           <span className="section-bar" />
           Condition Rating
         </div>
-        <div className="muted small" style={{ marginBottom: 10 }}>1=Excellent, 5=Critical</div>
+        <div className="muted small" style={{ marginBottom: 10 }}>1=Excellent, 2=Good, 3=Plan, 4=Poor, 5=Replace</div>
         <div className="score-row">
           {[1, 2, 3, 4, 5].map((v) => (
             <button
               key={`c-${v}`}
               className={`score-tile ${condition === v ? 'active' : ''}`}
-              style={condition === v ? { background: scoreMeta(v).color } : undefined}
+              style={condition === v ? { background: conditionMeta(v).color } : undefined}
               onClick={() => setCondition(v)}
             >
               {v}
             </button>
           ))}
         </div>
-        <div className="score-pill" style={{ background: scoreMeta(condition).color }}>
-          {condition <= 3 ? '✅' : '⚠️'} {scoreMeta(condition).label}
+        <div className="score-pill" style={{ background: conditionMeta(condition).color }}>
+          {conditionMeta(condition).label}
         </div>
 
         <div className="section-bar-title" style={{ marginTop: 16 }}>
           <span className="section-bar" />
           Priority Level
         </div>
-        <div className="muted small" style={{ marginBottom: 10 }}>1=Very Low, 5=Very High</div>
+        <div className="muted small" style={{ marginBottom: 10 }}>1=Very Low, 2=Low, 3=Medium, 4=High, 5=Very High</div>
         <div className="score-row">
           {[1, 2, 3, 4, 5].map((v) => (
             <button
               key={`p-${v}`}
               className={`score-tile ${priority === v ? 'active' : ''}`}
-              style={priority === v ? { background: scoreMeta(v).color } : undefined}
+              style={priority === v ? { background: priorityMeta(v).color } : undefined}
               onClick={() => setPriority(v)}
             >
               {v}
             </button>
           ))}
         </div>
-        <div className="score-pill" style={{ background: scoreMeta(priority).color }}>
-          {priority >= 4 ? '⚠️' : '✅'} {scoreMeta(priority).label}
+        <div className="score-pill" style={{ background: priorityMeta(priority).color }}>
+          {priorityMeta(priority).label}
         </div>
       </div>
 
@@ -277,3 +285,5 @@ export default function StaffAssess() {
     </div>
   );
 }
+
+

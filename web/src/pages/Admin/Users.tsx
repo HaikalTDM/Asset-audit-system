@@ -95,7 +95,7 @@ export default function AdminUsers() {
 
       <div className="card">
         <div className="section-heading">Create User</div>
-        <div className="row">
+        <div className="row admin-user-form">
           <div className="col">
             <div className="label">Display Name</div>
             <input className="input" value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} />
@@ -116,7 +116,7 @@ export default function AdminUsers() {
             </select>
           </div>
         </div>
-        <button className="button primary full" onClick={createUser} disabled={creating}>
+        <button className="button primary full admin-user-submit" onClick={createUser} disabled={creating}>
           {creating ? 'Creating...' : 'Create User'}
         </button>
       </div>

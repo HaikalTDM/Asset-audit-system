@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './lib/auth';
 import Login from './pages/Auth/Login';
@@ -15,6 +15,7 @@ import AdminDashboard from './pages/Admin/Dashboard';
 import AdminUsers from './pages/Admin/Users';
 import AdminAllAssessments from './pages/Admin/AllAssessments';
 import AdminSettings from './pages/Admin/Settings';
+import AdminReport from './pages/Admin/Report';
 import NotFound from './pages/NotFound';
 import { useOffline } from './lib/offline/network';
 import ExampleModal from './pages/Modal';
@@ -40,6 +41,28 @@ function AppShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handleBeforeInstall = (event: any) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+    const handleInstalled = () => setInstallPrompt(null);
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall as EventListener);
+    window.addEventListener('appinstalled', handleInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall as EventListener);
+      window.removeEventListener('appinstalled', handleInstalled);
+    };
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  };
 
   if (!user) return null;
 
@@ -77,6 +100,10 @@ function AppShell() {
                   <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 7h8M8 11h8M8 15h8" /></svg>
                   Assessments
                 </button>
+                <button className={`sidebar-link ${isActive('/admin/report') ? 'active' : ''}`} onClick={() => navigate('/admin/report')}>
+                  <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M7 16V8M12 16V5M17 16v-6" /></svg>
+                  Report
+                </button>
                 <button className={`sidebar-link ${isActive('/admin/users') ? 'active' : ''}`} onClick={() => navigate('/admin/users')}>
                   <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 6.5-4 8-4s6.5 0 8 4" /></svg>
                   Users
@@ -113,6 +140,18 @@ function AppShell() {
           </div>
           <div className="sidebar-footer">
             <div className="sidebar-pill">{user.role === 'admin' ? 'Admin Portal' : 'Staff Portal'}</div>
+            {installPrompt ? (
+              <button className="sidebar-link install" onClick={handleInstall}>
+                <span className="install-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M12 3v12" />
+                    <path d="M8 11l4 4 4-4" />
+                    <path d="M5 21h14" />
+                  </svg>
+                </span>
+                Install App
+              </button>
+            ) : null}
             <button className="sidebar-link signout" onClick={signOut}>
               <span className="signout-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -140,6 +179,10 @@ function AppShell() {
             <button className={`bottom-nav-item ${isActive('/admin/assessments') ? 'active' : ''}`} onClick={() => navigate('/admin/assessments')}>
               <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 7h8M8 11h8M8 15h8" /></svg>
               <span>Assessment</span>
+            </button>
+            <button className={`bottom-nav-item ${isActive('/admin/report') ? 'active' : ''}`} onClick={() => navigate('/admin/report')}>
+              <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M7 16V8M12 16V5M17 16v-6" /></svg>
+              <span>Report</span>
             </button>
             <button className={`bottom-nav-item ${isActive('/admin/users') ? 'active' : ''}`} onClick={() => navigate('/admin/users')}>
               <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 6.5-4 8-4s6.5 0 8 4" /></svg>
@@ -218,6 +261,7 @@ export default function App() {
           <Route index element={<AdminDashboard />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="assessments" element={<AdminAllAssessments />} />
+          <Route path="report" element={<AdminReport />} />
           <Route path="settings" element={<AdminSettings />} />
         </Route>
       </Route>
