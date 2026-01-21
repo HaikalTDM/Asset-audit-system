@@ -78,7 +78,7 @@ function AppShell() {
         <aside className="sidebar">
           <div className="sidebar-header">
             <div className="sidebar-title-block">
-              <div className="sidebar-title">Condition Assessment</div>
+              <div className="sidebar-title">Audit App</div>
             </div>
             <button
               className="sidebar-toggle"

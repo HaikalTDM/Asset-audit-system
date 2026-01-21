@@ -3,9 +3,10 @@ require('dotenv').config();
 
 const API_BASE_URL = process.env.API_BASE_URL || `http://127.0.0.1:${process.env.PORT || 4000}`;
 
-const DEFAULT_USERS = 10;
+const DEFAULT_USERS = 0;
 const DEFAULT_ASSESSMENTS = 100;
 const DEFAULT_CONCURRENCY = 100;
+const DEFAULT_LOOKBACK_DAYS = 7;
 
 const categories = ['Wall', 'Ceiling', 'Floor', 'Door', 'Window', 'HVAC', 'Electrical', 'Plumbing'];
 const elements = ['Crack', 'Leak', 'Stain', 'Warp', 'Rust', 'Loose', 'Damage', 'Noise'];
@@ -20,8 +21,11 @@ function parseArg(name, fallback) {
   const idx = process.argv.indexOf(`--${name}`);
   if (idx === -1) return fallback;
   const value = process.argv[idx + 1];
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
+  if (typeof fallback === 'number') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+  return value ?? fallback;
 }
 
 async function request(path, options = {}) {
@@ -43,25 +47,22 @@ async function request(path, options = {}) {
   return data;
 }
 
-async function createUser(index) {
-  const stamp = Date.now();
-  const email = `loadtest_user_${stamp}_${index}@example.com`;
-  const password = 'Passw0rd!123';
-  const displayName = `Load Test User ${index + 1}`;
-  const role = 'staff';
-
-  const data = await request('/auth/register', {
+async function loginUser(email, password) {
+  const data = await request('/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password, displayName, role }),
+    body: JSON.stringify({ email, password }),
   });
-
   return { email, password, token: data.token, user: data.user };
 }
 
-function buildAssessment() {
+function randomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function buildAssessment(createdAt) {
   return {
-    created_at: Date.now(),
+    created_at: createdAt,
     building: `Block ${Math.floor(Math.random() * 5) + 1}`,
     floor: `L${Math.floor(Math.random() * 10) + 1}`,
     room: `R-${Math.floor(Math.random() * 200) + 1}`,
@@ -124,16 +125,31 @@ async function runPool(items, worker, concurrency) {
 
 async function main() {
   const userCount = parseArg('users', DEFAULT_USERS);
+  const userListArg = parseArg('userlist', '');
   const totalAssessments = parseArg('assessments', DEFAULT_ASSESSMENTS);
   const concurrency = parseArg('concurrency', DEFAULT_CONCURRENCY);
+  const lookbackDays = parseArg('days', DEFAULT_LOOKBACK_DAYS);
 
   console.log(`API: ${API_BASE_URL}`);
-  console.log(`Creating ${userCount} users...`);
-  const users = [];
-  for (let i = 0; i < userCount; i++) {
-    users.push(await createUser(i));
+  const userEmails = userListArg
+    ? userListArg.split(',').map((email) => email.trim()).filter(Boolean)
+    : (process.env.LOADTEST_USERS || '').split(',').map((email) => email.trim()).filter(Boolean);
+
+  if (!userEmails.length) {
+    throw new Error('No users provided. Use --userlist or set LOADTEST_USERS.');
   }
-  console.log(`Created ${users.length} users.`);
+
+  const password = process.env.LOADTEST_PASSWORD || '';
+  if (!password) {
+    throw new Error('Missing password. Set LOADTEST_PASSWORD.');
+  }
+
+  console.log(`Logging in ${userEmails.length} existing users...`);
+  const users = [];
+  for (const email of userEmails) {
+    users.push(await loginUser(email, password));
+  }
+  console.log(`Logged in ${users.length} users.`);
 
   const jobs = Array.from({ length: totalAssessments }, (_, i) => i);
   const startedAt = Date.now();
@@ -143,7 +159,9 @@ async function main() {
     jobs,
     async (jobIndex) => {
       const user = users[jobIndex % users.length];
-      const payload = buildAssessment();
+      const offsetDays = randomInt(0, Math.max(0, lookbackDays - 1));
+      const createdAt = Date.now() - offsetDays * 24 * 60 * 60 * 1000;
+      const payload = buildAssessment(createdAt);
       return createAssessment(user.token, payload);
     },
     concurrency

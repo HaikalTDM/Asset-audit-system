@@ -1,14 +1,10 @@
 # Asset Audit System
 
-Field-ready mobile app (Expo + React Native) for capturing asset assessments with photos, working fully offline, and syncing to a Node/Express API backed by MySQL/MariaDB. Supports staff and admin roles, PDF and CSV export, and user management.
+Web app (Vite + React Router) for capturing asset assessments with photos, working offline in the browser, and syncing to a Node/Express API backed by MySQL/MariaDB. Supports staff and admin roles, PDF and CSV export, and user management.
 
 ## Quick start
 
-1) Install app dependencies
-
-   npm install
-
-2) Configure the API server
+1) Configure the API server
 
    cd server
    npm install
@@ -19,19 +15,22 @@ Field-ready mobile app (Expo + React Native) for capturing asset assessments wit
    npm run migrate
    npm run dev
 
-3) Configure the app
+2) Configure the web app
 
-   # .env
-   EXPO_PUBLIC_API_URL=http://127.0.0.1:4000
+   cd ../web
+   npm install
 
-4) Start the app
+   # web/.env
+   VITE_API_URL=http://127.0.0.1:4000
 
-   npx expo start
+3) Start the app
+
+   npm run dev
 
 ## Core features
 
 - Staff workflow: capture photo and location, assess condition and priority, review, save.
-- Offline-first: store locally in SQLite, auto-sync when network quality allows.
+- Offline-first: store locally in IndexedDB (Dexie), auto-sync when network allows.
 - Backend: Node/Express API + MySQL/MariaDB with JWT auth.
 - Admin tools: manage users, view all assessments, export and import CSV, view storage metrics.
 - Reporting: single and batch PDF exports.
@@ -39,25 +38,17 @@ Field-ready mobile app (Expo + React Native) for capturing asset assessments wit
 
 ## Project structure
 
-- app/                       File-based routes (auth, staff tabs, admin tabs)
-- components/                Shared UI components
-- constants/                 Theme and responsive utilities
-- hooks/                     Theme and color-scheme hooks
-- lib/                       Auth, API service, offline sync, reporting
-- assets/                    App icons and images
-- scripts/                   Dev and validation scripts
+- web/                       Vite + React Router web app
 - server/                    Express API + MySQL schema + migrations
-- __tests__/                 Automated tests
-- types/                     Type shims
 
 ## Architecture and flows
 
-- Providers live in app/_layout.tsx: ThemeProvider, AuthProvider, OfflineProvider, and RouteProtection.
-- Routing is role-aware: (auth) for sign-in/up, (tabs) for staff, (admin-tabs) for admins.
+- Providers live in web/src/main.tsx: ThemeProvider, AuthProvider, OfflineProvider.
+- Routing is role-aware for sign-in/up, staff, and admin routes.
 - Staff flow: capture -> assess -> review -> save.
   - Online: upload image to the API and create MySQL record.
   - Offline: save to SQLite and copy photo locally for later sync.
-- Offline sync: triggered by connectivity or foreground changes; batches uploads and writes, retries with backoff, and cleans up local entries.
+- Offline sync: triggered by connectivity changes; batches uploads and retries.
 - Admin flow: view all assessments, manage users (create, activate, role change, delete), export/import CSV, view storage metrics.
 - Reporting: PDF generation (single and batch) and CSV export/import for system-wide data exchange.
 
@@ -73,9 +64,9 @@ Field-ready mobile app (Expo + React Native) for capturing asset assessments wit
 
 Images are stored in MySQL as a LONGBLOB (photo_blob) with a MIME type (photo_mime) and are served via /assessments/:id/photo.
 
-## Offline storage (SQLite)
+## Offline storage (IndexedDB)
 
-Local tables include pending_assessments, sync_queue, offline_photos, and metadata. These support offline capture, batching, retry, and sync status reporting.
+Pending assessments are stored in IndexedDB via Dexie for offline capture, batching, retry, and sync status reporting.
 
 ## Security summary
 
@@ -85,24 +76,20 @@ Local tables include pending_assessments, sync_queue, offline_photos, and metada
 
 ## Key files
 
-- app/_layout.tsx: root providers and route protection
-- lib/auth/AuthContext.tsx: auth state and token handling
-- lib/firestore.ts: API-backed CRUD (kept name for compatibility)
-- lib/offline/*: offline storage, sync service, network monitor
-- lib/pdf/pdfGenerator.ts: PDF report generation
-- lib/exportImport.ts: CSV export and import
-- lib/storageCalculation.ts: storage metrics via API
+- web/src/main.tsx: root providers
+- web/src/lib/auth.tsx: auth state and token handling
+- web/src/lib/api.ts: API client
+- web/src/lib/offline/*: offline storage and sync
+- web/src/lib/pdf.ts: PDF report generation
 - server/index.js: REST API
 - server/db.js: MySQL connection pool
 - server/migrations/001_init.sql: schema
 
 ## Scripts and tests
 
-- npm run lint
+- web npm run lint
 - server npm run migrate
 - server npm run dev
-- scripts/test-*.js: manual or static validation helpers
-- __tests__/responsive-typography.test.ts: responsive typography tests
 
 ## Notes
 

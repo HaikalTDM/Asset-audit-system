@@ -25,6 +25,8 @@ export default function StaffCapture() {
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -40,14 +42,20 @@ export default function StaffCapture() {
   }, []);
 
   const startCamera = async () => {
-    if (!navigator.mediaDevices?.getUserMedia) return;
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-    streamRef.current = stream;
-    if (videoRef.current) {
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play();
+    if (!navigator.mediaDevices?.getUserMedia) return false;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+      setCameraActive(true);
+      return true;
+    } catch (err) {
+      console.warn('Camera access failed, falling back to file capture.', err);
+      return false;
     }
-    setCameraActive(true);
   };
 
   const stopCamera = () => {
@@ -82,6 +90,14 @@ export default function StaffCapture() {
     setPhotoMime(file.type || 'image/jpeg');
     setPhotoUrl(URL.createObjectURL(file));
     stopCamera();
+  };
+
+  const handleTakePhoto = async () => {
+    if (cameraInputRef.current) {
+      cameraInputRef.current.click();
+      return;
+    }
+    await startCamera();
   };
 
   const canProceed = building && floor && room && category && element && photoBlob;
@@ -174,10 +190,16 @@ export default function StaffCapture() {
                   <div className="photo-icon">📷</div>
                   <div className="muted">Capture or upload asset photo</div>
                   <div className="row">
-                    <button className="button primary" onClick={startCamera}>Take Photo</button>
+                    <button className="button primary" onClick={handleTakePhoto}>Take Photo</button>
                     <label className="button secondary muted-button">
                       Upload
-                      <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={onFileChange} />
+                      <input
+                        ref={galleryInputRef}
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={onFileChange}
+                      />
                     </label>
                   </div>
                 </>
@@ -199,6 +221,15 @@ export default function StaffCapture() {
           )}
         </div>
       </div>
+
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        style={{ display: 'none' }}
+        onChange={onFileChange}
+      />
 
       <button className="button primary full" disabled={!canProceed} onClick={handleContinue}>
         {canProceed ? 'Begin Assessment' : 'Complete Steps 1-2 to Continue'}
