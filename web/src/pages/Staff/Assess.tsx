@@ -48,10 +48,20 @@ export default function StaffAssess() {
   const [notes, setNotes] = useState('');
   const [showDamageModal, setShowDamageModal] = useState(false);
   const [showRootModal, setShowRootModal] = useState(false);
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(state?.coords ?? null);
 
   useEffect(() => {
     if (!state) navigate('/staff/capture');
   }, [state, navigate]);
+
+  useEffect(() => {
+    if (coords || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+      () => {},
+      { enableHighAccuracy: false, timeout: 6000, maximumAge: 60000 }
+    );
+  }, [coords]);
 
   if (!state) return null;
 
@@ -59,6 +69,7 @@ export default function StaffAssess() {
     navigate('/staff/review', {
       state: {
         ...state,
+        coords,
         condition,
         priority,
         damageCategory,
@@ -86,7 +97,7 @@ export default function StaffAssess() {
   };
 
   const createdAtLabel = new Date(state.createdAt).toLocaleString();
-  const mapUrl = state.coords ? `https://maps.google.com/?q=${state.coords.latitude},${state.coords.longitude}` : '';
+  const mapUrl = coords ? `https://maps.google.com/?q=${coords.latitude},${coords.longitude}` : '';
 
   return (
     <div className="assess">
@@ -209,15 +220,15 @@ export default function StaffAssess() {
           <div className="map-pin">📍</div>
           <div className="muted small">Map preview</div>
         </div>
-        {state.coords ? (
+        {coords ? (
           <div className="gps-coords">
             <div className="detail-row">
               <div className="detail-label">Latitude:</div>
-              <div className="detail-value">{state.coords.latitude.toFixed(6)}</div>
+              <div className="detail-value">{coords.latitude.toFixed(6)}</div>
             </div>
             <div className="detail-row">
               <div className="detail-label">Longitude:</div>
-              <div className="detail-value">{state.coords.longitude.toFixed(6)}</div>
+              <div className="detail-value">{coords.longitude.toFixed(6)}</div>
             </div>
           </div>
         ) : (

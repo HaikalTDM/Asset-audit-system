@@ -1,11 +1,11 @@
-const CACHE_NAME = 'asset-audit-web-v2';
+const CACHE_NAME = 'asset-audit-web-v3';
 const CORE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  '/icons/icon-180.png',
+  '/icons/icon-192.png?v=3',
+  '/icons/icon-512.png?v=3',
+  '/icons/icon-180.png?v=3',
   '/vite.svg',
 ];
 const ASSET_EXTENSIONS = [

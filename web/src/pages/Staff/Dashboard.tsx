@@ -44,7 +44,7 @@ export default function StaffDashboard() {
       </div>
 
       <div className="logo-row">
-        <img className="brand-logo" src="/logo.png" alt="Microcorp" />
+        <img className="brand-logo" src="/Dashboardlogo.png" alt="Audit App" />
       </div>
 
       <div className="card">

@@ -9,7 +9,7 @@ const { v4: uuidv4 } = require('uuid');
 const pool = require('./db');
 const { authenticate, requireAdmin } = require('./middleware/auth');
 const { ensureDir, safeUnlink, uploadsRoot } = require('./utils/files');
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 const PORT = Number(process.env.PORT || 4000);

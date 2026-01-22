@@ -376,13 +376,6 @@ export default function AdminDashboard() {
       </div>
 
       <div className="card">
-        <div className="section-heading">Storage</div>
-        <div className="row">
-          <div className="col"><div className="label">Total Storage</div>{metrics ? formatBytes(metrics.storageBytes || 0) : 'Loading...'}</div>
-        </div>
-      </div>
-
-      <div className="card">
         <div className="section-heading">Recent Assessments</div>
         {recent.length === 0 ? (
           <div className="muted">No assessments yet.</div>
