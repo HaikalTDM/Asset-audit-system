@@ -15,14 +15,14 @@ const TOKEN_KEY = 'asset_audit_token';
 
 export function setToken(token: string | null) {
   if (token) {
-    localStorage.setItem(TOKEN_KEY, token);
+    sessionStorage.setItem(TOKEN_KEY, token);
   } else {
-    localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
   }
 }
 
 export function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
+  return sessionStorage.getItem(TOKEN_KEY);
 }
 
 async function request<T>(path: string, options: { method?: string; body?: any; auth?: boolean; isForm?: boolean } = {}): Promise<T> {

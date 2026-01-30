@@ -19,6 +19,7 @@ export default function StaffHistoryDetail() {
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -62,7 +63,14 @@ export default function StaffHistoryDetail() {
 
   return (
     <div className="detail">
-      {item.photo_uri && <img className="detail-photo" src={item.photo_uri} alt="Assessment" />}
+      {item.photo_uri && (
+        <img
+          className="detail-photo"
+          src={item.photo_uri}
+          alt="Assessment"
+          onClick={() => setShowPhotoModal(true)}
+        />
+      )}
 
       <div className="detail-score-card">
         <div className="detail-score-badge" style={{ background: g.color }}>{g.grade}</div>
@@ -124,6 +132,15 @@ export default function StaffHistoryDetail() {
         <button className="button primary" onClick={() => openAssessmentPdf(item)}>Export PDF</button>
       </div>
       <button className="button danger full" onClick={handleDelete}>Delete Assessment</button>
+
+      {showPhotoModal && item.photo_uri ? (
+        <div className="image-modal-overlay" role="dialog" aria-modal="true" onClick={() => setShowPhotoModal(false)}>
+          <div className="image-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="image-modal-close" onClick={() => setShowPhotoModal(false)}>✕</button>
+            <img className="image-modal-img" src={item.photo_uri} alt="Assessment full" />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
